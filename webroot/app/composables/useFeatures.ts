@@ -26,9 +26,9 @@ import MigrateFeature from "@/features/migrate";
 export function useFeatures(
   updateStatus: (state: string) => void,
   refreshStatus: () => Promise<void>,
+  consoleApi: ReturnType<typeof useConsole>,
 ) {
   const cmd = useNativeCmd();
-  const consoleApi = useConsole();
 
   const consoleRef = consoleApi.consoleRef;
 
@@ -76,63 +76,151 @@ export function useFeatures(
     try {
       const els = {
         get hotspotIface() {
-          return document.getElementById(
-            "hotspot-iface",
-          ) as HTMLSelectElement | null;
+          return (
+            (document.getElementById("hotspot-iface") as HTMLSelectElement) ??
+            undefined
+          );
         },
         get hotspotSsid() {
-          return document.getElementById(
-            "hotspot-ssid",
-          ) as HTMLInputElement | null;
+          return (
+            (document.getElementById("hotspot-ssid") as HTMLInputElement) ??
+            undefined
+          );
         },
         get hotspotPassword() {
-          return document.getElementById(
-            "hotspot-password",
-          ) as HTMLInputElement | null;
+          return (
+            (document.getElementById("hotspot-password") as HTMLInputElement) ??
+            undefined
+          );
         },
         get hotspotBand() {
-          return document.getElementById(
-            "hotspot-band",
-          ) as HTMLSelectElement | null;
+          return (
+            (document.getElementById("hotspot-band") as HTMLSelectElement) ??
+            undefined
+          );
         },
         get hotspotChannel() {
-          return document.getElementById(
-            "hotspot-channel",
-          ) as HTMLSelectElement | null;
+          return (
+            (document.getElementById("hotspot-channel") as HTMLSelectElement) ??
+            undefined
+          );
         },
         get hotspotPopup() {
-          return document.getElementById("hotspot-popup");
+          return document.getElementById("hotspot-popup") ?? undefined;
         },
         get startHotspotBtn() {
-          return document.getElementById("start-hotspot-btn");
+          const el = document.getElementById("start-hotspot-btn");
+          return el ? (el as HTMLButtonElement) : undefined;
         },
         get stopHotspotBtn() {
-          return document.getElementById("stop-hotspot-btn");
+          const el = document.getElementById("stop-hotspot-btn");
+          return el ? (el as HTMLButtonElement) : undefined;
         },
         get dismissHotspotWarning() {
-          return document.getElementById("dismiss-hotspot-warning");
+          return (
+            document.getElementById("dismiss-hotspot-warning") ?? undefined
+          );
         },
 
         get forwardNatIface() {
-          return document.getElementById(
-            "forward-nat-iface",
-          ) as HTMLSelectElement | null;
+          return (
+            (document.getElementById(
+              "forward-nat-iface",
+            ) as HTMLSelectElement) ?? undefined
+          );
         },
         get forwardNatPopup() {
-          return document.getElementById("forward-nat-popup");
+          return document.getElementById("forward-nat-popup") ?? undefined;
         },
         get startForwardingBtn() {
-          return document.getElementById("start-forwarding-btn");
+          const el = document.getElementById("start-forwarding-btn");
+          return el ? (el as HTMLButtonElement) : undefined;
         },
         get stopForwardingBtn() {
-          return document.getElementById("stop-forwarding-btn");
+          const el = document.getElementById("stop-forwarding-btn");
+          return el ? (el as HTMLButtonElement) : undefined;
+        },
+      };
+
+      const StateManagerAdapter = {
+        get: (name: string) =>
+          (StateManager.get as unknown as any)(name as any),
+        set: (name: string, value: boolean) =>
+          (StateManager.set as unknown as any)(name as any, value),
+      };
+
+      const ProgressIndicatorAdapter = {
+        create: (
+          text: string,
+          type?: "spinner" | "dots",
+          el?: HTMLElement | null,
+        ) => {
+          const h = ProgressIndicator.create(
+            text,
+            (type as any) || "spinner",
+            el,
+          );
+          // Always return a compatible object (features expect an object, not null)
+          return {
+            progressLine: (h as any).element as HTMLElement,
+            interval: undefined,
+            __internalHandle: h,
+          } as any;
+        },
+        remove: (handle?: any) => {
+          if (!handle) return;
+          const el =
+            (handle as any)?.progressLine ?? (handle as any)?.element ?? handle;
+          ProgressIndicator.remove(el as any);
+        },
+        update: (handle?: any, text?: string) => {
+          if (!handle) return;
+          const el =
+            (handle as any)?.progressLine ?? (handle as any)?.element ?? handle;
+          ProgressIndicator.update(el as any, text || "");
+        },
+      };
+
+      const ButtonStateAdapter = {
+        setButtonPair: (
+          startBtn?: HTMLElement | null | undefined,
+          stopBtn?: HTMLElement | null | undefined,
+          isActive?: boolean,
+        ) => {
+          ButtonState.setButtonPair(
+            startBtn as any,
+            stopBtn as any,
+            !!isActive,
+          );
+        },
+        setButton: (
+          btn?: HTMLElement | null | undefined,
+          enabled?: boolean,
+          visible = true,
+          opacity: string | null = null,
+        ) => {
+          ButtonState.setButton(
+            btn as any,
+            !!enabled,
+            visible,
+            opacity ?? null,
+          );
+        },
+        setButtons: (buttons: Array<any>) => {
+          const adapted = buttons.map((b) => ({
+            btn: b.btn as any,
+            enabled: b.enabled,
+            visible: b.visible,
+            opacity: b.opacity,
+          }));
+          ButtonState.setButtons(adapted);
         },
       };
 
       const commonDeps = {
         els,
         Storage,
-        StateManager,
+        StateManager: StateManagerAdapter,
         CHROOT_DIR,
         PATH_CHROOT_SH,
         HOTSPOT_SCRIPT,
@@ -140,11 +228,16 @@ export function useFeatures(
         OTA_UPDATER,
         appendConsole,
         runCmdSync: (cmdStr: string) => cmd.runCommandSync(cmdStr),
-        runCmdAsync: (cmdStr: string, onComplete?: (res: any) => void) =>
+        runCmdAsync: (
+          cmdStr: string,
+          onOutput?: (line: string) => void,
+          onError?: (err: string) => void,
+          onComplete?: (res: any) => void,
+        ) =>
           cmd.runCommandAsync(cmdStr, {
             asRoot: true,
             debug: false, // Will be passed from parent
-            callbacks: { onComplete },
+            callbacks: { onOutput, onError, onComplete },
           }),
         withCommandGuard,
         ANIMATION_DELAYS: {
@@ -156,18 +249,17 @@ export function useFeatures(
           PROGRESS_SPINNER: 200,
           PROGRESS_DOTS: 400,
         },
-        ProgressIndicator,
-        disableAllActions,
+        ProgressIndicator: ProgressIndicatorAdapter,
         disableSettingsPopup,
-        ButtonState,
+        ButtonState: ButtonStateAdapter,
         PopupManager,
         activeCommandId: activeCommandId,
         rootAccessConfirmed: rootAccessConfirmed,
         hotspotActive: hotspotActive,
         forwardingActive: forwardingActive,
         sparseMigrated: sparseMigrated,
-        updateStatus: () => {}, // Will be passed from parent
-        refreshStatus: () => {}, // Will be passed from parent
+        updateStatus: updateStatus,
+        refreshStatus: refreshStatus,
       };
 
       try {

@@ -5,8 +5,7 @@ import { Storage } from "@/composables/useStateManager";
 import { NetworkInterfaceManager } from "@/services/NetworkInterfaceManager";
 import ForwardNatFeature from "@/features/forward-nat";
 
-export function useForwardNat() {
-  const consoleApi = useConsole();
+export function useForwardNat(consoleApi: ReturnType<typeof useConsole>) {
   const cmd = useNativeCmd();
 
   function appendConsole(text: string, cls?: string) {

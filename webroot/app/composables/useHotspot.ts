@@ -5,8 +5,7 @@ import { Storage } from "@/composables/useStateManager";
 import { NetworkInterfaceManager } from "@/services/NetworkInterfaceManager";
 import HotspotFeature from "@/features/hotspot";
 
-export function useHotspot() {
-  const consoleApi = useConsole();
+export function useHotspot(consoleApi: ReturnType<typeof useConsole>) {
   const cmd = useNativeCmd();
 
   const hotspotWarningVisible = ref<boolean>(true);

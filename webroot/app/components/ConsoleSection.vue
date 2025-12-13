@@ -32,7 +32,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from "vue";
+import { ref, onMounted, onUnmounted } from "vue";
 import Icon from "@/components/Icon.vue";
 import useConsole from "@/composables/useConsole";
 
@@ -47,7 +47,18 @@ const { logBuffer } = props;
 const consoleEl = ref<HTMLElement | null>(null);
 
 onMounted(() => {
-  logBuffer.consoleRef = consoleEl;
+  if (logBuffer && logBuffer.consoleRef) {
+    logBuffer.consoleRef.value = consoleEl.value;
+  } else {
+    (logBuffer as any).consoleRef = consoleEl;
+  }
+});
+
+onUnmounted(() => {
+  // Clear the ref value so the composable can detach listeners/cleanup.
+  if (logBuffer && logBuffer.consoleRef) {
+    logBuffer.consoleRef.value = null;
+  }
 });
 
 defineEmits<{

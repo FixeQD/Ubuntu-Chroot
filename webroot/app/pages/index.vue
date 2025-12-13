@@ -164,7 +164,7 @@ const {
   savePostExecScript,
   clearPostExecScript,
   updateChroot,
-} = useChroot();
+} = useChroot(consoleApi);
 
 const {
   hotspotWarningVisible,
@@ -184,7 +184,7 @@ const {
   stopHotspot,
   dismissHotspotWarning,
   toggleHotspotPassword,
-} = useHotspot();
+} = useHotspot(consoleApi);
 
 const {
   forwardNatIfaces,
@@ -193,7 +193,7 @@ const {
   closeForwardNatPopup,
   startForwarding,
   stopForwarding,
-} = useForwardNat();
+} = useForwardNat(consoleApi);
 
 const {
   openSettingsPopup,
@@ -205,11 +205,12 @@ const {
   uninstallChroot,
   trimSparseImage,
   resizeSparseImage,
-} = useSettings();
+} = useSettings(consoleApi);
 
 const { copyConsole, clearConsole, initFeatureModules } = useFeatures(
   updateStatus,
   refreshStatus,
+  consoleApi,
 );
 
 watch(
@@ -342,10 +343,7 @@ onMounted(async () => {
     } catch {}
   }, 250);
 
-  // Hide loading screen after initialization
-  setTimeout(() => {
-    showLoading.value = false;
-  }, 1000);
+  showLoading.value = false;
 });
 </script>
 

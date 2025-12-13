@@ -3,9 +3,7 @@ import BackupRestoreFeature from "@/features/backup-restore";
 import UninstallFeature from "@/features/uninstall";
 import ResizeFeature from "@/features/resize";
 
-export function useSettings() {
-  const consoleApi = useConsole();
-
+export function useSettings(consoleApi: ReturnType<typeof useConsole>) {
   function appendConsole(text: string, cls?: string) {
     consoleApi.append(text, cls);
   }

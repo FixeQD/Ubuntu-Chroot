@@ -1,4 +1,4 @@
-import { ref, computed } from "vue";
+import { ref, computed, nextTick } from "vue";
 import useNativeCmd from "@/composables/useNativeCmd";
 import useConsole from "@/composables/useConsole";
 import { Storage, StateManager } from "@/composables/useStateManager";
@@ -11,9 +11,8 @@ import {
   DOZE_OFF_FILE,
 } from "@/composables/constants";
 
-export function useChroot() {
+export function useChroot(consoleApi: ReturnType<typeof useConsole>) {
   const cmd = useNativeCmd();
-  const consoleApi = useConsole();
   const consoleRef = consoleApi.consoleRef;
 
   const statusText = ref<string>("unknown");
@@ -294,84 +293,58 @@ export function useChroot() {
       return;
     }
 
-    // Set UI to in-progress state immediately for responsiveness
-    updateStatus(
-      action === "start"
-        ? "starting"
-        : action === "stop"
-          ? "stopping"
-          : "restarting",
-    );
+    await withCommandGuard(action, async () => {
+      updateStatus(
+        action === "start"
+          ? "starting"
+          : action === "stop"
+            ? "stopping"
+            : "restarting",
+      );
 
-    await consoleApi.scrollToBottom({ behavior: "smooth", waitMs: 200 });
-    const actionText =
-      action === "start"
-        ? "Starting chroot"
-        : action === "stop"
-          ? "Stopping chroot"
-          : "Restarting chroot";
-    const progress = ProgressIndicator.create(
-      actionText,
-      "dots",
-      consoleRef.value || document.getElementById("console"),
-    );
+      await nextTick();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      consoleApi
+        .scrollToBottom({ behavior: "smooth", waitMs: 200 })
+        .catch(() => {});
 
-    try {
+      const actionText =
+        action === "start"
+          ? "Starting chroot"
+          : action === "stop"
+            ? "Stopping chroot"
+            : "Restarting chroot";
+      const progress = ProgressIndicator.create(
+        actionText,
+        "dots",
+        consoleRef.value || document.getElementById("console"),
+      );
+
       const cmdStr = `sh ${PATH_CHROOT_SH} ${action} --no-shell`;
       console.log(`Running command: ${cmdStr}`);
-      const result = await cmd.runCommandAsyncPromise(cmdStr, {
-        asRoot: true,
-        debug: debugMode.value,
-        onOutput: (line: string) => appendConsole(line),
-      });
-      if (result.success) {
-        try {
-          // Verify the action was successful by checking status
-          await new Promise((resolve) => setTimeout(resolve, 5000)); // Wait a bit for status to update
-          const verifyOut = await cmd.runCommandSync(
-            `sh ${PATH_CHROOT_SH} status`,
-          );
-          const verifyStatus = String(verifyOut || "");
-          const isRunning = /Status:\s*RUNNING/i.test(verifyStatus);
-
-          const expectedRunning =
-            action === "start" || (action === "restart" && true); // restart should end up running
-          const expectedStopped = action === "stop";
-
-          if (
-            (expectedRunning && isRunning) ||
-            (expectedStopped && !isRunning) ||
-            action === "restart"
-          ) {
-            appendConsole(`✓ ${action} completed successfully`, "success");
-            await refreshStatus();
-          } else {
-            appendConsole(
-              `⚠ ${action} completed but status verification failed`,
-              "warn",
-            );
-            await refreshStatus(); // Refresh anyway
-          }
-        } catch (e: any) {
+      try {
+        const result = await cmd.runCommandAsyncPromise(cmdStr, {
+          asRoot: true,
+          debug: debugMode.value,
+          onOutput: (line: string) => appendConsole(line),
+        });
+        if (result.success) {
+          appendConsole(`✓ ${action} completed successfully`, "success");
+          await refreshStatus();
+        } else {
           appendConsole(
-            `✓ ${action} command succeeded, but verification failed: ${e.message}`,
-            "warn",
+            `✗ ${action} failed: ${result.error || "Unknown error"}`,
+            "err",
           );
-          await refreshStatus(); // Still refresh to update UI
+          await refreshStatus();
         }
-      } else {
-        appendConsole(
-          `✗ ${action} failed: ${result.error || "Unknown error"}`,
-          "err",
-        );
-        await refreshStatus(); // Refresh to revert UI state
+      } catch (e: any) {
+        appendConsole(`Failed to execute ${action}: ${e.message}`, "err");
+        await refreshStatus();
+      } finally {
+        ProgressIndicator.remove(progress);
       }
-    } catch (e: any) {
-      appendConsole(`Failed to execute ${action}: ${e.message}`, "err");
-      await refreshStatus();
-    } finally {
-      ProgressIndicator.remove(progress);
-    }
+    });
   }
 
   async function start() {
