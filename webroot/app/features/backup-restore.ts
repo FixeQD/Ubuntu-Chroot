@@ -1,3 +1,7 @@
+import { DEFAULT_BACKUP_DIR } from "../composables/constants";
+import { createApp } from "vue";
+import FilePickerPopup from "../components/FilePickerPopup.vue"; // Ignore, it works (Why the fu"k it shows that there's an error)
+
 export type BackupRestoreDeps = {
   appendConsole: (text: string, cls?: string) => void;
   runCmdSync: (cmd: string) => Promise<string>;
@@ -9,15 +13,7 @@ export type BackupRestoreDeps = {
     setJSON?: (key: string, value: any) => void;
   };
 
-  showFilePickerDialog?: (
-    title: string,
-    message: string,
-    defaultPath?: string,
-    defaultFilename?: string,
-    forRestore?: boolean,
-  ) => Promise<string | null>;
-
-  showConfirmDialog?: (
+  showConfirmDialog: (
     title: string,
     message: string,
     confirmText?: string,
@@ -73,6 +69,35 @@ export type BackupRestoreDeps = {
 let deps: BackupRestoreDeps | null = null;
 
 /**
+ * File picker dialog using Vue component
+ */
+function showFilePickerDialog(
+  title: string,
+  message: string,
+  defaultPath?: string,
+  defaultFilename?: string,
+  forRestore = false,
+): Promise<string | null> {
+  return new Promise((resolve) => {
+    const app = createApp(FilePickerPopup, {
+      visible: true,
+      title,
+      message,
+      defaultPath,
+      defaultFilename,
+      forRestore,
+      onResolve: (path: string | null) => {
+        app.unmount();
+        resolve(path);
+      },
+    });
+    const div = document.createElement("div");
+    document.body.appendChild(div);
+    app.mount(div);
+  });
+}
+
+/**
  * Initialize the feature module with dependencies
  */
 export function init(d: BackupRestoreDeps) {
@@ -103,38 +128,46 @@ export async function backupChroot() {
     return;
   }
 
-  const defaultDir = "/sdcard";
+  const defaultDir = DEFAULT_BACKUP_DIR;
   const defaultFilename = makeBackupFilename();
-  const pick = d.showFilePickerDialog;
-  let backupPath: string | null = null;
 
   try {
-    if (!pick) {
-      d.appendConsole("Backup path picker not available", "err");
-      return;
+    let backupPath: string | null;
+    try {
+      backupPath = await showFilePickerDialog(
+        "Backup Chroot Environment",
+        "Select where to save the backup file.\n\nThe chroot will be stopped during backup if it's currently running.",
+        defaultDir,
+        defaultFilename,
+        false,
+      );
+    } catch (err) {
+      deps!.appendConsole(
+        `File picker failed, using default path: ${(err as Error)?.message || String(err)}`,
+        "warn",
+      );
+      backupPath = `${defaultDir}/${defaultFilename}`;
     }
-    backupPath = await pick(
-      "Backup Chroot Environment",
-      "Select where to save the backup file.\n\nThe chroot will be stopped during backup if it's currently running.",
-      defaultDir,
-      defaultFilename,
-      false,
-    );
 
     if (!backupPath) return;
 
     const confirm = d.showConfirmDialog;
-    if (!confirm) {
-      d.appendConsole("Confirmation dialog not available", "warn");
+
+    let ok: boolean;
+    try {
+      ok = await confirm(
+        "Backup Chroot Environment",
+        `This will create a compressed backup of your chroot environment.\n\nThe chroot will be stopped during backup if it's currently running.\n\nBackup location: ${backupPath}\n\nContinue?`,
+        "Backup",
+        "Cancel",
+      );
+    } catch (err) {
+      d.appendConsole(
+        `Confirmation dialog error: ${(err as Error)?.message || String(err)}`,
+        "err",
+      );
       return;
     }
-
-    const ok = await confirm(
-      "Backup Chroot Environment",
-      `This will create a compressed backup of your chroot environment.\n\nThe chroot will be stopped during backup if it's currently running.\n\nBackup location: ${backupPath}\n\nContinue?`,
-      "Backup",
-      "Cancel",
-    );
 
     if (!ok) return;
 
@@ -267,35 +300,43 @@ export async function restoreChroot() {
     return;
   }
 
-  const pick = d.showFilePickerDialog;
-  if (!pick) {
-    d.appendConsole("File picker not available", "err");
-    return;
-  }
-
   try {
-    const backupPath = await pick(
-      "Restore Chroot Environment",
-      "Select the backup file to restore from.\n\nWARNING: This will permanently delete your current chroot environment!",
-      "/sdcard",
-      "",
-      true, // forRestore
-    );
+    let backupPath: string | null;
+    try {
+      backupPath = await showFilePickerDialog(
+        "Restore Chroot Environment",
+        "Select the backup file to restore from.\n\nWARNING: This will permanently delete your current chroot environment!",
+        DEFAULT_BACKUP_DIR,
+        "",
+        true, // forRestore
+      );
+    } catch (err) {
+      deps!.appendConsole(
+        `File picker error: ${(err as Error)?.message || String(err)}`,
+        "err",
+      );
+      return;
+    }
 
     if (!backupPath) return;
 
     const confirmFn = d.showConfirmDialog;
-    if (!confirmFn) {
-      d.appendConsole("Confirmation dialog not available", "err");
+
+    let confirmed: boolean;
+    try {
+      confirmed = await confirmFn(
+        "Restore Chroot Environment",
+        `⚠️ WARNING: This will permanently delete your current chroot environment and replace it with the backup!\n\nAll current data in the chroot will be lost.\n\nBackup file: ${backupPath}\n\nThis action cannot be undone. Continue?`,
+        "Restore",
+        "Cancel",
+      );
+    } catch (err) {
+      d.appendConsole(
+        `Confirmation dialog error: ${(err as Error)?.message || String(err)}`,
+        "err",
+      );
       return;
     }
-
-    const confirmed = await confirmFn(
-      "Restore Chroot Environment",
-      `⚠️ WARNING: This will permanently delete your current chroot environment and replace it with the backup!\n\nAll current data in the chroot will be lost.\n\nBackup file: ${backupPath}\n\nThis action cannot be undone. Continue?`,
-      "Restore",
-      "Cancel",
-    );
 
     if (!confirmed) return;
 
