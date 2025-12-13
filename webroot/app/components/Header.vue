@@ -28,7 +28,10 @@
         id="settings-btn"
         class="theme-btn"
         title="Options"
-        @click="$emit('openSettingsPopup')"
+        @click="
+          onBeforeOpenSettings?.();
+          $emit('openSettingsPopup');
+        "
       >
         <Icon name="settings" />
       </button>
@@ -49,6 +52,14 @@
 <script setup lang="ts">
 import { ref, onMounted, watch } from "vue";
 import Icon from "@/components/Icon.vue";
+
+interface Props {
+  onBeforeOpenSettings?: () => void;
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  onBeforeOpenSettings: undefined,
+});
 
 /**
  * Theme handling:

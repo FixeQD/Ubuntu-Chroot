@@ -2,6 +2,7 @@
   <LoadingScreen v-if="showLoading" />
   <div class="app">
     <Header
+      :onBeforeOpenSettings="() => loadPostExecScript()"
       @openForwardNatPopup="openForwardNatPopup"
       @openHotspotPopup="openHotspotPopup"
       @openSettingsPopup="openSettingsPopup"
