@@ -23,12 +23,24 @@
             <label for="forward-nat-iface">Network Interface:</label>
             <select
               id="forward-nat-iface"
-              :value="forwardNatIface"
-              @change="$emit('update:forwardNatIface', $event.target.value)"
+              v-model="internalIface"
+              :disabled="
+                forwardNatLoading ||
+                (forwardNatIfaces && forwardNatIfaces.length === 0)
+              "
             >
-              <option value="">Loading interfaces...</option>
+              <option value="" disabled v-if="forwardNatLoading">
+                Loading interfaces...
+              </option>
               <option
-                v-for="iface in forwardNatIfaces"
+                value=""
+                disabled
+                v-else-if="!forwardNatIfaces || forwardNatIfaces.length === 0"
+              >
+                No interfaces found
+              </option>
+              <option
+                v-for="iface in forwardNatIfaces || []"
                 :key="iface.value"
                 :value="iface.value"
               >
@@ -59,23 +71,40 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue";
+import { ref, watch, onMounted } from "vue";
 
 interface Props {
-  forwardNatIfaces: Array<{ value: string; label: string }>;
-  forwardNatIface: string;
+  forwardNatIfaces?: Array<{ value: string; label: string }>;
+  forwardNatIface?: string;
+  forwardNatLoading?: boolean;
 }
 
 const props = defineProps<Props>();
 
-const popupRef = ref<HTMLElement | null>(null);
-
-defineEmits<{
+const emit = defineEmits<{
   close: [];
   "update:forwardNatIface": [value: string];
   startForwarding: [];
   stopForwarding: [];
 }>();
+
+const popupRef = ref<HTMLElement | null>(null);
+const internalIface = ref<string>(props.forwardNatIface ?? "");
+
+watch(
+  () => props.forwardNatIface,
+  (v) => {
+    if (v !== internalIface.value) internalIface.value = v ?? "";
+  },
+);
+
+watch(internalIface, (v) => {
+  if (v !== props.forwardNatIface) emit("update:forwardNatIface", v ?? "");
+});
+
+onMounted(() => {
+  internalIface.value = props.forwardNatIface ?? "";
+});
 </script>
 
 <style scoped></style>

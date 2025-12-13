@@ -1,3 +1,5 @@
+import { NetworkInterfaceManager } from "@/services/NetworkInterfaceManager";
+
 export type ForwardNatDeps = {
   // UI element map (optional, but preferred)
   els?: {
@@ -78,12 +80,39 @@ export type ForwardNatDeps = {
 };
 
 let deps: ForwardNatDeps | null = null;
+let interfaceManager: NetworkInterfaceManager | null = null;
 
 /**
  * Initialize the feature with dependencies.
  */
 export function init(d: ForwardNatDeps) {
   deps = d;
+  if (deps.forwardingActive == null) deps.forwardingActive = { value: false };
+
+  interfaceManager = new NetworkInterfaceManager(
+    {
+      Storage: deps.Storage,
+      appendConsole: deps.appendConsole,
+      runCmdSync: deps.runCmdSync,
+      rootAccessConfirmed: deps.rootAccessConfirmed,
+    },
+    deps.FORWARD_NAT_SCRIPT,
+    "chroot_forward_nat_interfaces_cache",
+    deps.els?.forwardNatIface || null,
+    "chroot_selected_interface",
+  );
+
+  try {
+    loadForwardingStatus();
+  } catch {
+    // ignore failures during init
+  }
+
+  try {
+    fetchInterfaces(true, true).catch(() => {});
+  } catch {
+    // ignore
+  }
 }
 
 /**
@@ -91,17 +120,42 @@ export function init(d: ForwardNatDeps) {
  */
 export function loadForwardingStatus() {
   if (!deps) return;
-  if (deps.forwardingActive && deps.StateManager && deps.StateManager.get) {
-    deps.forwardingActive.value = deps.StateManager.get("forwarding");
+  if (!deps.forwardingActive) deps.forwardingActive = { value: false };
+
+  let value = false;
+  if (deps.StateManager && deps.StateManager.get) {
+    try {
+      const v = deps.StateManager.get("forwarding");
+      value = Boolean(v);
+    } catch {
+      value = false;
+    }
   } else {
     // Fallback to Storage boolean
     try {
       const val = deps.Storage.get("forwarding_active");
-      deps.forwardingActive = deps.forwardingActive || { value: false };
-      deps.forwardingActive.value = String(val) === "true";
+      value = String(val) === "true";
     } catch {
-      // ignore
+      value = false;
     }
+  }
+
+  deps.forwardingActive.value = value;
+
+  try {
+    deps.ButtonState?.setButtonPair?.(
+      deps.els?.startForwardingBtn ?? null,
+      deps.els?.stopForwardingBtn ?? null,
+      Boolean(deps.forwardingActive.value),
+    );
+  } catch {
+    // ignore
+  }
+
+  try {
+    deps.updateStatus?.(deps.forwardingActive.value ? "forwarding" : "stopped");
+  } catch {
+    // ignore
   }
 }
 
@@ -124,59 +178,6 @@ export function saveForwardingStatus() {
 }
 
 /**
- * Populate the forward-nat interface select UI with a list of interface strings.
- * The `interfacesRaw` array contains elements like: "wlan0:10.0.0.1" or "eth0".
- */
-function populateInterfaces(interfacesRaw: string[]) {
-  if (!deps) return;
-  const select = deps.els?.forwardNatIface;
-  if (!select) return;
-
-  select.innerHTML = "";
-  if (!interfacesRaw || interfacesRaw.length === 0) {
-    const option = document.createElement("option");
-    option.value = "";
-    option.textContent = "No interfaces found";
-    select.appendChild(option);
-    select.disabled = true;
-    return;
-  }
-
-  interfacesRaw.forEach((ifaceRaw) => {
-    const trimmed = String(ifaceRaw || "").trim();
-    if (!trimmed) return;
-
-    const option = document.createElement("option");
-    if (trimmed.includes(":")) {
-      const [iface, ip] = trimmed.split(":").map((s) => s.trim());
-      option.value = iface;
-      option.textContent = `${iface} (${ip})`;
-    } else {
-      option.value = trimmed;
-      option.textContent = trimmed;
-    }
-    select.appendChild(option);
-  });
-
-  select.disabled = false;
-
-  // Try to restore previously selected iface
-  try {
-    const saved = deps.Storage.get("chroot_selected_interface");
-    if (saved) {
-      const opt = Array.from(select.options).find((o) => o.value === saved);
-      if (opt) select.value = saved;
-      else if (select.options.length > 0)
-        select.value = select.options[0].value;
-    } else if (select.options.length > 0) {
-      select.value = select.options[0].value;
-    }
-  } catch {
-    // ignore
-  }
-}
-
-/**
  * Fetch network interfaces for forwarding. Uses caching (Storage) and prefers cached data unless forced.
  * - forceRefresh: forces fetching from script and updating cache.
  * - backgroundOnly: when true, only updates cache but does not update UI elements.
@@ -185,76 +186,39 @@ export async function fetchInterfaces(
   forceRefresh = false,
   backgroundOnly = false,
 ) {
-  if (!deps) return;
-
-  // Ensure root is available
-  if (deps.rootAccessConfirmed && !deps.rootAccessConfirmed.value) return;
-
-  const cached: string[] =
-    (deps.Storage.getJSON
-      ? deps.Storage.getJSON("chroot_forward_nat_interfaces_cache")
-      : null) || [];
-
-  if (cached && Array.isArray(cached) && cached.length > 0 && !forceRefresh) {
-    if (!backgroundOnly) populateInterfaces(cached);
-    return;
-  }
-
-  // No cache or forced refresh
-  try {
-    const cmd = `sh ${deps.FORWARD_NAT_SCRIPT} list-iface`;
-    const out = await deps.runCmdSync(cmd);
-    const interfacesRaw = String(out || "")
-      .trim()
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean);
-
-    try {
-      deps.Storage.setJSON?.(
-        "chroot_forward_nat_interfaces_cache",
-        interfacesRaw,
-      );
-    } catch {
-      // ignore
-    }
-
-    if (!backgroundOnly) populateInterfaces(interfacesRaw);
-  } catch (err: any) {
-    // Show a polite warning in console unless backgroundOnly
-    if (!backgroundOnly) {
-      deps.appendConsole?.(
-        `Could not fetch interfaces: ${String(err?.message || err)}`,
-        "warn",
-      );
-      const select = deps.els?.forwardNatIface;
-      if (select) {
-        select.innerHTML = "";
-        const option = document.createElement("option");
-        option.value = "";
-        option.textContent = "Failed to load interfaces";
-        select.appendChild(option);
-        select.disabled = true;
-      }
-    }
-  }
+  if (!interfaceManager) return;
+  await interfaceManager.fetchInterfaces(forceRefresh, backgroundOnly);
 }
 
 /**
  * Opens the forwarding popup and ensures UI has cached interfaces (no heavy background fetch).
  */
-export function openForwardNatPopup() {
+export async function openForwardNatPopup() {
   if (!deps) return;
   deps.PopupManager?.open?.(deps.els?.forwardNatPopup ?? null);
-  // Populate from cache only (no background fetching to avoid lag)
-  fetchInterfaces(false, false).catch(() => {});
+
+  // Update select element reference in case it wasn't available during init
+  if (interfaceManager) {
+    interfaceManager.updateSelectElement(deps.els?.forwardNatIface || null);
+  }
+
+  try {
+    await fetchInterfaces(false, true);
+  } catch {
+    // ignore
+  }
+
+  try {
+    await fetchInterfaces(false, false);
+  } catch {
+    // ignore
+  }
 }
 
 /**
  * Refresh interfaces (force refresh).
  */
 export function refreshInterfaces() {
-  if (!deps) return;
   fetchInterfaces(true, false).catch(() => {});
 }
 
@@ -308,19 +272,23 @@ export async function startForwarding() {
       // start forwarding using script
       const cmd = `sh ${d.FORWARD_NAT_SCRIPT} -i "${iface}" 2>&1`;
       const out = await d.runCmdSync(cmd);
-      if (out) {
+      const outStr = String(out || "");
+      if (outStr) {
         // display output lines
-        String(out)
-          .split("\n")
-          .forEach((l) => {
-            if (l && l.trim()) d.appendConsole?.(String(l).trim());
-          });
+        outStr.split(/\r?\n/).forEach((l) => {
+          if (l && l.trim()) d.appendConsole?.(String(l).trim());
+        });
       }
 
+      // Heuristic: treat as success unless we see explicit error keywords.
+      const failureRegex = /fail(ed)?|error|permission denied|not found/i;
       const success =
-        out &&
-        (String(out).includes("Localhost routing active") ||
-          String(out).includes("Gateway:"));
+        outStr &&
+        !failureRegex.test(outStr) &&
+        (outStr.includes("Localhost routing active") ||
+          outStr.includes("Gateway:") ||
+          outStr.trim().length > 0);
+
       if (success) {
         d.appendConsole?.(
           `✓ Forwarding started successfully on ${iface}`,
@@ -385,7 +353,6 @@ export async function stopForwarding() {
 
     try {
       const cmd = `sh ${d.FORWARD_NAT_SCRIPT} -k 2>&1`;
-      // We prefer runCmdAsync here to let the backend call us back when done
       d.runCmdAsync?.(cmd, (result: any) => {
         // cleanup
         d.ProgressIndicator?.remove?.(progress ?? null);
@@ -456,7 +423,6 @@ const ForwardNatFeature = {
   loadForwardingStatus,
   saveForwardingStatus,
   fetchInterfaces,
-  populateInterfaces,
   openForwardNatPopup,
   closeForwardNatPopup,
   refreshInterfaces,

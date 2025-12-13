@@ -12,6 +12,7 @@
           ×
         </button>
       </div>
+
       <div class="popup-body">
         <div
           id="hotspot-warning"
@@ -25,6 +26,7 @@
               try 2.4GHz if needed.
             </div>
           </div>
+
           <button
             id="dismiss-hotspot-warning"
             class="warning-close"
@@ -41,12 +43,32 @@
               <label for="hotspot-iface">Upstream Interface:</label>
               <select
                 id="hotspot-iface"
-                :value="hotspotIface"
-                @change="$emit('update:hotspotIface', $event.target.value)"
+                v-model="internalIface"
+                :disabled="
+                  hotspotLoading ||
+                  (hotspotIfaces && hotspotIfaces.length === 0) ||
+                  !!hotspotIfaceError
+                "
+                aria-label="Hotspot upstream interface"
               >
-                <option value="">Loading interfaces...</option>
+                <option value="" disabled v-if="hotspotLoading">
+                  Loading interfaces...
+                </option>
+
+                <option value="" disabled v-else-if="hotspotIfaceError">
+                  {{ hotspotIfaceError }}
+                </option>
+
                 <option
-                  v-for="iface in hotspotIfaces"
+                  value=""
+                  disabled
+                  v-else-if="!hotspotIfaces || hotspotIfaces.length === 0"
+                >
+                  No interfaces found
+                </option>
+
+                <option
+                  v-for="iface in hotspotIfaces || []"
                   :key="iface.value"
                   :value="iface.value"
                 >
@@ -124,6 +146,15 @@
 
           <div class="script-actions">
             <button
+              id="refresh-hotspot-ifaces-btn"
+              class="btn"
+              @click="$emit('refreshHotspotIfaces')"
+              title="Reload interface list"
+            >
+              Refresh
+            </button>
+
+            <button
               id="start-hotspot-btn"
               class="btn"
               @click="$emit('startHotspot')"
@@ -150,25 +181,30 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue";
+import { ref, watch, onMounted } from "vue";
 import Icon from "@/components/Icon.vue";
+
+interface IfaceOption {
+  value: string;
+  label: string;
+}
 
 interface Props {
   hotspotWarningVisible: boolean;
-  hotspotIfaces: Array<{ value: string; label: string }>;
-  hotspotIface: string;
-  hotspotSsid: string;
-  hotspotPassword: string;
-  hotspotBand: string;
-  hotspotChannel: string;
-  hotspotChannels: number[];
+  hotspotIfaces: Array<IfaceOption> | null | undefined;
+  hotspotIface: string | null | undefined;
+  hotspotSsid: string | null | undefined;
+  hotspotPassword: string | null | undefined;
+  hotspotBand: string | null | undefined;
+  hotspotChannel: string | null | undefined;
+  hotspotChannels: number[] | null | undefined;
+  hotspotLoading?: boolean;
+  hotspotIfaceError?: string | null | undefined;
 }
 
 const props = defineProps<Props>();
 
-const popupRef = ref<HTMLElement | null>(null);
-
-defineEmits<{
+const emit = defineEmits<{
   close: [];
   dismissHotspotWarning: [];
   "update:hotspotIface": [value: string];
@@ -179,7 +215,30 @@ defineEmits<{
   toggleHotspotPassword: [];
   startHotspot: [];
   stopHotspot: [];
+  refreshHotspotIfaces: [];
 }>();
+
+const popupRef = ref<HTMLElement | null>(null);
+const internalIface = ref<string>(props.hotspotIface ?? "");
+
+// Keep internal selected iface in sync with parent prop
+watch(
+  () => props.hotspotIface,
+  (v) => {
+    if (v !== internalIface.value) internalIface.value = v ?? "";
+  },
+);
+
+// Emit updates from internal to parent (v-model like)
+watch(internalIface, (v) => {
+  if (v !== (props.hotspotIface ?? "")) {
+    emit("update:hotspotIface", v ?? "");
+  }
+});
+
+onMounted(() => {
+  internalIface.value = props.hotspotIface ?? "";
+});
 </script>
 
 <style scoped></style>

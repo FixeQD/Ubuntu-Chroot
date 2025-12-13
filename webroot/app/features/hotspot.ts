@@ -1,3 +1,5 @@
+import { NetworkInterfaceManager } from "@/services/NetworkInterfaceManager";
+
 type Nullable<T> = T | null | undefined;
 
 type DepEls = {
@@ -81,9 +83,29 @@ type PlayerProgress = {
 
 const HotspotFeature = (() => {
   let deps: Nullable<HotspotDeps> = null;
+  let interfaceManager: NetworkInterfaceManager | null = null;
 
   function init(d: HotspotDeps) {
     deps = d;
+
+    interfaceManager = new NetworkInterfaceManager(
+      {
+        Storage: deps.Storage,
+        appendConsole: deps.appendConsole,
+        runCmdSync: deps.runCmdSync,
+        rootAccessConfirmed: deps.rootAccessConfirmed,
+      },
+      deps.HOTSPOT_SCRIPT,
+      "chroot_hotspot_interfaces_cache",
+      deps.els.hotspotIface || null,
+      "chroot_hotspot_iface",
+    );
+
+    try {
+      fetchInterfaces(true, true).catch(() => {});
+    } catch {
+      // ignore
+    }
   }
 
   function _getEl<K extends keyof DepEls>(name: K): Nullable<DepEls[K]> {
@@ -95,120 +117,24 @@ const HotspotFeature = (() => {
     deps?.appendConsole?.(text, cls);
   }
 
-  function populateInterfaces(interfacesRaw: string[]) {
-    if (!deps) return;
-    const select = deps.els.hotspotIface;
-    if (!select) return;
-
-    // Clear current options
-    select.innerHTML = "";
-
-    if (!interfacesRaw || interfacesRaw.length === 0) {
-      const option = document.createElement("option");
-      option.value = "";
-      option.textContent = "No interfaces found";
-      select.appendChild(option);
-      select.disabled = true;
-      return;
-    }
-
-    interfacesRaw.forEach((ifaceRaw) => {
-      const trimmed = String(ifaceRaw || "").trim();
-      if (!trimmed) return;
-
-      const option = document.createElement("option");
-
-      if (trimmed.includes(":")) {
-        const [iface, ip] = trimmed.split(":").map((s) => s.trim());
-        option.value = iface;
-        option.textContent = `${iface} (${ip})`;
-      } else {
-        option.value = trimmed;
-        option.textContent = trimmed;
-      }
-
-      select.appendChild(option);
-    });
-
-    select.disabled = false;
-
-    // Try to restore previously saved interface
-    try {
-      const savedIface =
-        (deps!.Storage &&
-          deps!.Storage.get &&
-          deps!.Storage.get("chroot_hotspot_iface")) ||
-        null;
-      if (savedIface) {
-        const exact = Array.from(select.options).find(
-          (opt) => opt.value === savedIface,
-        );
-        if (exact) select.value = savedIface;
-        else if (select.options.length > 0)
-          select.value = select.options[0].value;
-      } else if (select.options.length > 0) {
-        select.value = select.options[0].value;
-      }
-    } catch {
-      // no-op
-    }
-  }
-
   async function fetchInterfaces(forceRefresh = false, backgroundOnly = false) {
-    if (!deps || !deps.rootAccessConfirmed || !deps.runCmdSync) return;
-    if (!deps.rootAccessConfirmed.value) return;
+    if (!interfaceManager) return;
+    await interfaceManager.fetchInterfaces(forceRefresh, backgroundOnly);
+  }
 
-    const { Storage } = deps;
-    const cached: string[] =
-      Storage?.getJSON?.("chroot_hotspot_interfaces_cache") || [];
+  async function openHotspotPopup() {
+    if (!deps) return;
+    deps.PopupManager?.open?.(deps.els.hotspotPopup ?? null);
 
-    if (cached && Array.isArray(cached) && cached.length > 0 && !forceRefresh) {
-      if (!backgroundOnly) populateInterfaces(cached);
-      return;
+    if (interfaceManager) {
+      interfaceManager.updateSelectElement(deps.els.hotspotIface || null);
     }
 
     try {
-      const cmd = `sh ${deps.HOTSPOT_SCRIPT} list-iface`;
-      const out = await deps.runCmdSync(cmd);
-      const interfacesRaw = String(out || "")
-        .trim()
-        .split(",")
-        .map((s) => s.trim())
-        .filter(Boolean);
-
-      // Always update cache
-      try {
-        Storage.setJSON("chroot_hotspot_interfaces_cache", interfacesRaw);
-      } catch {
-        // ignore
-      }
-
-      if (!backgroundOnly) populateInterfaces(interfacesRaw);
-    } catch (e: any) {
-      // error when fetching interfaces
-      if (!backgroundOnly) {
-        _appendConsole(
-          `Could not fetch interfaces: ${String(e?.message || e)}`,
-          "warn",
-        );
-        const select = deps.els.hotspotIface;
-        if (select) {
-          select.innerHTML = "";
-          const option = document.createElement("option");
-          option.value = "";
-          option.textContent = "Failed to load interfaces";
-          select.appendChild(option);
-          select.disabled = true;
-        }
-      }
+      await fetchInterfaces(false, false);
+    } catch {
+      // ignore
     }
-  }
-
-  function openHotspotPopup() {
-    if (!deps) return;
-    deps.PopupManager?.open?.(deps.els.hotspotPopup);
-    // Populate from cache if possible; otherwise fetch
-    fetchInterfaces(false, false).catch(() => {});
   }
 
   function closeHotspotPopup() {
@@ -568,7 +494,6 @@ const HotspotFeature = (() => {
   // Expose feature's public API
   const API = {
     init,
-    populateInterfaces,
     fetchInterfaces,
     openHotspotPopup,
     closeHotspotPopup,
