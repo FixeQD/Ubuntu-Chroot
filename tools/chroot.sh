@@ -59,8 +59,8 @@ usage() {
     echo "  start         Start the chroot environment and enter a shell."
     echo "  stop          Stop the chroot environment and kill all processes."
     echo "  restart       Restart the chroot environment."
-    echo "  status        Show the current status of the chroot."
-    echo "  umount        Unmount all chroot filesystems without stopping processes."
+    status        Show the current status of the chroot.
+    umount        Unmount all chroot filesystems without stopping processes.
     echo "  run <command> Execute a command inside the chroot environment."
     echo "  backup <path> Create a compressed backup of the chroot environment."
     echo "  restore <path> Restore chroot from a backup archive."
@@ -773,6 +773,14 @@ show_status() {
     fi
 }
 
+show_raw_status() {
+    if is_chroot_running; then
+        echo "RUNNING"
+    else
+        echo "STOPPED"
+    fi
+}
+
 list_users() {
     run_in_chroot "awk -F: '\$3 >= 1000 && \$3 < 65534 {print \$1}' /etc/passwd 2>/dev/null | tr '\n' ',' | sed 's/,$//'"
 }
@@ -1157,7 +1165,7 @@ WEBUI_MODE=0
 
 for arg in "$@"; do
     case "$arg" in
-        start|stop|restart|status|umount|fstrim|backup|restore|uninstall|list-users|run|resize)
+        start|stop|restart|status|raw-status|umount|fstrim|backup|restore|uninstall|list-users|run|resize)
             COMMAND="$arg" ;;
         --no-shell) NO_SHELL_FLAG=1 ;;
         --webui) WEBUI_MODE=1 ;;
@@ -1191,6 +1199,7 @@ case "$COMMAND" in
         if [ "$NO_SHELL_FLAG" -eq 0 ]; then enter_chroot "$USER_ARG"; else log "Chroot setup complete (no-shell mode). Use 'sh $0 start' to enter."; fi
         ;;
     status) show_status ;;
+    raw-status) show_raw_status ;;
     umount)
         log "Umounting chroot filesystems..."; umount_chroot; log "Chroot filesystems unmounted successfully." ;;
     fstrim)

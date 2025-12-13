@@ -221,46 +221,6 @@ watch(
   },
 );
 
-onMounted(async () => {
-  // bind & load console now handled by composable
-  try {
-    const overlayCount = document.querySelectorAll(
-      ".popup-overlay.active",
-    ).length;
-    appendConsole(`DEBUG: popup-overlay active count=${overlayCount}`, "debug");
-  } catch (e) {
-    // best-effort only
-  }
-
-  const rootOK = await checkRootAccess();
-  if (rootOK) {
-    await refreshStatus();
-    await fetchUsers();
-  }
-  await readBootFile(true).catch(() => {});
-  await readDozeOffFile(true).catch(() => {});
-
-  initFeatureModules();
-  setTimeout(() => {
-    try {
-      if (
-        typeof HotspotFeature !== "undefined" &&
-        HotspotFeature.fetchInterfaces
-      ) {
-        HotspotFeature.fetchInterfaces(false, true).catch(() => {});
-      }
-    } catch {}
-    try {
-      if (
-        typeof ForwardNatFeature !== "undefined" &&
-        ForwardNatFeature.fetchInterfaces
-      ) {
-        ForwardNatFeature.fetchInterfaces(false, true).catch(() => {});
-      }
-    } catch {}
-  }, 250);
-});
-
 watch(
   () => cmd.isAvailable.value,
   async (avail) => {
@@ -306,6 +266,7 @@ watch(androidOptimize, (val) => {
 });
 
 onMounted(async () => {
+  updateStatus("unknown");
   // bind & load console now handled by composable
   try {
     const overlayCount = document.querySelectorAll(

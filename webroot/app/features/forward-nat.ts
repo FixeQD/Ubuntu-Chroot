@@ -151,12 +151,6 @@ export function loadForwardingStatus() {
   } catch {
     // ignore
   }
-
-  try {
-    deps.updateStatus?.(deps.forwardingActive.value ? "forwarding" : "stopped");
-  } catch {
-    // ignore
-  }
 }
 
 /**

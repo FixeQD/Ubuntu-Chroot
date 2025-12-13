@@ -80,7 +80,7 @@ export function useChroot(consoleApi: ReturnType<typeof useConsole>) {
   async function fetchUsers(silent = false) {
     if (!cmd.isAvailable.value) return;
     try {
-      const out = await cmd.runCommandSync(`sh ${PATH_CHROOT_SH} list-users`);
+      const out = await cmd.runCommandSync(`${PATH_CHROOT_SH} list-users`);
       const list = String(out || "").trim();
       users.value = list ? list.split(",").filter(Boolean) : [];
       const saved = Storage.get("chroot_selected_user");
@@ -110,7 +110,7 @@ export function useChroot(consoleApi: ReturnType<typeof useConsole>) {
         'command -v ubuntu-chroot 2>/dev/null || echo ""',
       );
       if (!String(check || "").trim()) {
-        chrootCmd = `sh ${PATH_CHROOT_SH}`;
+        chrootCmd = `${PATH_CHROOT_SH}`;
       }
     } catch {
       chrootCmd = `sh ${PATH_CHROOT_SH}`;
@@ -165,38 +165,34 @@ export function useChroot(consoleApi: ReturnType<typeof useConsole>) {
     }
 
     try {
-      const out = await cmd.runCommandSync(`sh ${PATH_CHROOT_SH} status`);
-      appendConsole(`[DEBUG] raw status output: ${String(out || "")}`, "debug");
-      const s = String(out || "");
-      const running = /Status:\s*RUNNING/i.test(s);
+      const out = await cmd.runCommandSync(`${PATH_CHROOT_SH} raw-status`);
+      const s = String(out || "")
+        .trim()
+        .toUpperCase();
 
-      if (running) {
+      if (s === "RUNNING") {
+        console.log("Setting statusText to running");
         statusText.value = "running";
         startDisabled.value = true;
         stopDisabled.value = false;
         restartDisabled.value = false;
         userSelectDisabled.value = false;
         copyLoginDisabled.value = false;
-        appendConsole("[DEBUG] UI set to running", "debug");
+      } else if (s === "STOPPED") {
+        console.log("Setting statusText to stopped");
+        statusText.value = "stopped";
+        startDisabled.value = false;
+        stopDisabled.value = true;
+        restartDisabled.value = true;
+        userSelectDisabled.value = true;
+        copyLoginDisabled.value = true;
       } else {
-        const chrootExists = !(String(s || "").trim() === "");
-        if (!chrootExists) {
-          statusText.value = "not_found";
-          startDisabled.value = true;
-          stopDisabled.value = true;
-          restartDisabled.value = true;
-          userSelectDisabled.value = true;
-          copyLoginDisabled.value = true;
-          appendConsole("[DEBUG] UI set to not_found", "debug");
-        } else {
-          statusText.value = "stopped";
-          startDisabled.value = false;
-          stopDisabled.value = true;
-          restartDisabled.value = true;
-          userSelectDisabled.value = true;
-          copyLoginDisabled.value = true;
-          appendConsole("[DEBUG] UI set to stopped", "debug");
-        }
+        statusText.value = "unknown";
+        startDisabled.value = true;
+        stopDisabled.value = true;
+        restartDisabled.value = true;
+        userSelectDisabled.value = true;
+        copyLoginDisabled.value = true;
       }
     } catch (e: any) {
       statusText.value = "unknown";
@@ -320,7 +316,7 @@ export function useChroot(consoleApi: ReturnType<typeof useConsole>) {
         consoleRef.value || document.getElementById("console"),
       );
 
-      const cmdStr = `sh ${PATH_CHROOT_SH} ${action} --no-shell`;
+      const cmdStr = `${PATH_CHROOT_SH} ${action} --no-shell`;
       console.log(`Running command: ${cmdStr}`);
       try {
         const result = await cmd.runCommandAsyncPromise(cmdStr, {
@@ -491,7 +487,7 @@ export function useChroot(consoleApi: ReturnType<typeof useConsole>) {
         await new Promise((resolve) => setTimeout(resolve, 1000));
       }
 
-      const cmdStr = `sh ${OTA_UPDATER}`;
+      const cmdStr = `${OTA_UPDATER}`;
       const result = await cmd.runCommandAsyncPromise(cmdStr, {
         asRoot: true,
         debug: debugMode.value,
