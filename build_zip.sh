@@ -2,7 +2,7 @@
 set -e
 
 # Check for required dependencies
-deps=("rsync" "python3")
+deps=("rsync" "python3" "bun")
 for dep in "${deps[@]}"; do
     if ! command -v "$dep" >/dev/null 2>&1; then
         echo "$dep is required but not installed."
@@ -44,8 +44,17 @@ rm -f "$ZIP_NAME"
 
 TMP_DIR=$(mktemp -d)
 
+# Build webroot
+cd webroot/app
+bun run generate
+cd ../../
+
 # Copy all files except excluded
-rsync -a --exclude='.git*' --exclude='Screenshots' --exclude='Docker' --exclude='CHANGELOG.md' --exclude='out' --exclude='update-*.json' --exclude='update_meta.sh' --exclude='build_zip.sh' "$PWD/" "$TMP_DIR/"
+rsync -a --exclude='.git*' --exclude='node_modules' --exclude='Screenshots' --exclude='Docker' --exclude='CHANGELOG.md' --exclude='out' --exclude='update-*.json' --exclude='update_meta.sh' --exclude='build_zip.sh' "$PWD/" "$TMP_DIR/"
+
+# Replace webroot/app with built .output
+rm -rf "$TMP_DIR/webroot/app"
+cp -r webroot/app/.output/public "$TMP_DIR/webroot"
 
 # For update builds, remove tar.gz files and add update marker
 if [ "$UPDATE_FLAG" = "--update" ]; then
