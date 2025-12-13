@@ -59,8 +59,8 @@ usage() {
     echo "  start         Start the chroot environment and enter a shell."
     echo "  stop          Stop the chroot environment and kill all processes."
     echo "  restart       Restart the chroot environment."
-    status        Show the current status of the chroot.
-    umount        Unmount all chroot filesystems without stopping processes.
+    echo "  status        Show the current status of the chroot."
+    echo "  umount        Unmount all chroot filesystems without stopping processes."
     echo "  run <command> Execute a command inside the chroot environment."
     echo "  backup <path> Create a compressed backup of the chroot environment."
     echo "  restore <path> Restore chroot from a backup archive."
