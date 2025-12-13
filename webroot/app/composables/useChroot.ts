@@ -53,6 +53,7 @@ export function useChroot(consoleApi: ReturnType<typeof useConsole>) {
   });
 
   function appendConsole(text: string, cls?: string) {
+    if (cls === "debug" && !debugMode.value) return;
     consoleApi.append(text, cls);
   }
 
