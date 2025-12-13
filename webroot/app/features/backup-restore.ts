@@ -1,3 +1,4 @@
+import { DEFAULT_BACKUP_DIR } from "../composables/constants";
 import { createApp } from "vue";
 import FilePickerPopup from "../components/FilePickerPopup.vue"; // Ignore, it works (Why the fu"k it shows that there's an error)
 
