@@ -1,11 +1,13 @@
 import { DEFAULT_BACKUP_DIR } from "../composables/constants";
 import { createApp } from "vue";
 import FilePickerPopup from "../components/FilePickerPopup.vue"; // Ignore, it works (Why the fu"k it shows that there's an error)
+import { CommandResult } from "@/composables/useNativeCmd";
 
 export type BackupRestoreDeps = {
   appendConsole: (text: string, cls?: string) => void;
   runCmdSync: (cmd: string) => Promise<string>;
   runCmdAsync?: (cmd: string, onComplete?: (res: any) => void) => string | null;
+  runCommandAsyncPromise?: (cmd: string, options?: { asRoot?: boolean; debug?: boolean; onOutput?: (line: string) => void }) => Promise<CommandResult>;
   Storage: {
     get?: (key: string, defaultValue?: any) => any;
     set?: (key: string, value: any) => void;
@@ -244,24 +246,32 @@ export async function backupChroot() {
       }
     } else {
       try {
-        const out = await d.runCmdSync(cmdStr);
+        const result = await d.runCommandAsyncPromise?.(cmdStr, { onOutput: (line) => d.appendConsole(line) });
         if (progress) d.ProgressIndicator?.remove(progress);
-        d.appendConsole(`✓ Backup completed successfully`, "success");
-        d.appendConsole(`Saved to: ${backupPath}`, "info");
-        d.appendConsole("━━━ Backup Complete ━━━", "success");
-        d.updateModuleStatus?.();
-        d.disableAllActions?.(false);
-        d.disableSettingsPopup?.(false, true);
-        setTimeout(
-          () => d.refreshStatus?.(),
-          d.ANIMATION_DELAYS?.STATUS_REFRESH ?? 500,
-        );
+        if (result?.success) {
+          d.appendConsole(`✓ Backup completed successfully`, "success");
+          d.appendConsole(`Saved to: ${backupPath}`, "info");
+          d.appendConsole("━━━ Backup Complete ━━━", "success");
+          d.updateModuleStatus?.();
+          d.disableAllActions?.(false);
+          d.disableSettingsPopup?.(false, true);
+          setTimeout(
+            () => d.refreshStatus?.(),
+            d.ANIMATION_DELAYS?.STATUS_REFRESH ?? 500,
+          );
+        } else {
+          d.appendConsole(`✗ Backup failed: ${result?.error || 'Unknown error'}`, "err");
+          d.updateModuleStatus?.();
+          d.disableAllActions?.(false);
+          d.disableSettingsPopup?.(false, true);
+          setTimeout(
+            () => d.refreshStatus?.(),
+            d.ANIMATION_DELAYS?.STATUS_REFRESH ?? 500,
+          );
+        }
       } catch (err: any) {
         if (progress) d.ProgressIndicator?.remove(progress);
-        d.appendConsole(
-          `✗ Backup failed: ${String(err?.message || err)}`,
-          "err",
-        );
+        d.appendConsole(`✗ Backup failed: ${String(err?.message || err)}`, "err");
         d.updateModuleStatus?.();
         d.disableAllActions?.(false);
         d.disableSettingsPopup?.(false, true);
@@ -414,19 +424,30 @@ export async function restoreChroot() {
       }
     } else {
       try {
-        const out = await d.runCmdSync(cmdStr);
+        const result = await d.runCommandAsyncPromise?.(cmdStr, { onOutput: (line) => d.appendConsole(line) });
         if (progress) d.ProgressIndicator?.remove?.(progress ?? null);
-        d.appendConsole("✓ Restore completed successfully", "success");
-        d.appendConsole("The chroot environment has been restored", "info");
-        d.appendConsole("━━━ Restore Complete ━━━", "success");
-        d.updateStatus?.("stopped");
-        d.updateModuleStatus?.();
-        d.disableAllActions?.(true);
-        d.disableSettingsPopup?.(false, true);
-        setTimeout(
-          () => d.refreshStatus?.(),
-          (d.ANIMATION_DELAYS?.STATUS_REFRESH ?? 500) * 2,
-        );
+        if (result?.success) {
+          d.appendConsole("✓ Restore completed successfully", "success");
+          d.appendConsole("The chroot environment has been restored", "info");
+          d.appendConsole("━━━ Restore Complete ━━━", "success");
+          d.updateStatus?.("stopped");
+          d.updateModuleStatus?.();
+          d.disableAllActions?.(true);
+          d.disableSettingsPopup?.(false, true);
+          setTimeout(
+            () => d.refreshStatus?.(),
+            (d.ANIMATION_DELAYS?.STATUS_REFRESH ?? 500) * 2,
+          );
+        } else {
+          d.appendConsole("✗ Restore failed", "err");
+          d.updateModuleStatus?.();
+          d.disableAllActions?.(false);
+          d.disableSettingsPopup?.(false, true);
+          setTimeout(
+            () => d.refreshStatus?.(),
+            (d.ANIMATION_DELAYS?.STATUS_REFRESH ?? 500) * 2,
+          );
+        }
       } catch (err: any) {
         if (progress) d.ProgressIndicator?.remove?.(progress ?? null);
         d.appendConsole("✗ Restore failed", "err");

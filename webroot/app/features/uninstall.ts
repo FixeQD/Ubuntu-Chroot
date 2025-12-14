@@ -1,3 +1,5 @@
+import { CommandResult } from "@/composables/useNativeCmd";
+
 export type UninstallDeps = {
   activeCommandId?: { value: string | null };
   rootAccessConfirmed?: { value: boolean };
@@ -31,6 +33,7 @@ export type UninstallDeps = {
     cmd: string,
     onComplete?: (result: any) => void,
   ) => string | null;
+  runCommandAsyncPromise?: (cmd: string, options?: { asRoot?: boolean; debug?: boolean; onOutput?: (line: string) => void }) => Promise<CommandResult>;
   runCmdSync?: (cmd: string) => Promise<string>;
   ensureChrootStopped?: () => Promise<boolean>;
   prepareActionExecution?: (
@@ -180,22 +183,35 @@ export async function uninstallChroot() {
       return;
     }
 
-    // Fallback: run synchronously
+    // Fallback: run asynchronously
     try {
-      if (!d.runCmdSync) throw new Error("runCmdSync not available");
-      const out = await d.runCmdSync(cmdStr);
-      d.appendConsole("✅ Chroot uninstalled successfully!", "success");
-      d.appendConsole("All chroot data has been removed.", "info");
-      d.appendConsole("━━━ Uninstallation Complete ━━━", "success");
-      d.updateStatus?.("stopped");
-      d.updateModuleStatus?.();
-      d.disableAllActions?.(true);
-      d.disableSettingsPopup?.(false, false);
+      const result = await d.runCommandAsyncPromise?.(cmdStr, { onOutput: (line) => d.appendConsole(line) });
+      if (result?.success) {
+        d.appendConsole("✅ Chroot uninstalled successfully!", "success");
+        d.appendConsole("All chroot data has been removed.", "info");
+        d.appendConsole("━━━ Uninstallation Complete ━━━", "success");
+        d.updateStatus?.("stopped");
+        d.updateModuleStatus?.();
+        d.disableAllActions?.(true);
+        d.disableSettingsPopup?.(false, false);
 
-      try {
-        await d.refreshStatus?.();
-      } catch {
-        // ignore
+        try {
+          await d.refreshStatus?.();
+        } catch {
+          // ignore
+        }
+      } else {
+        d.appendConsole("✗ Uninstallation failed", "err");
+        d.appendConsole("Check the logs above for details.", "err");
+        d.updateModuleStatus?.();
+        d.disableAllActions?.(false);
+        d.disableSettingsPopup?.(false, false);
+
+        try {
+          await d.refreshStatus?.();
+        } catch {
+          // ignore
+        }
       }
     } catch (err: any) {
       d.appendConsole("✗ Uninstallation failed", "err");

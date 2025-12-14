@@ -1,4 +1,5 @@
 import { NetworkInterfaceManager } from "@/services/NetworkInterfaceManager";
+import type { CommandResult } from "@/composables/useNativeCmd";
 
 type Nullable<T> = T | null | undefined;
 
@@ -37,6 +38,7 @@ interface HotspotDeps {
     cmd: string,
     onComplete?: (result: any) => void,
   ) => string | null;
+  runCommandAsyncPromise?: (cmd: string, options?: { asRoot?: boolean; debug?: boolean; onOutput?: (line: string) => void }) => Promise<CommandResult>;
   withCommandGuard: (id: string, fn: () => Promise<void>) => Promise<void>;
   ANIMATION_DELAYS: Record<string, number>;
   ProgressIndicator: {
@@ -348,36 +350,38 @@ const HotspotFeature = (() => {
 
       try {
         const cmdLine = `sh ${HOTSPOT_SCRIPT} -o "${iface}" -s "${ssid}" -p "${password}" -b "${band}" -c "${channel}" 2>&1`;
-        // The script may emit logs - but `runCmdSync` will wait for completion
-        const output = await runCmdSync(cmdLine);
+        const result = await d.runCommandAsyncPromise?.(cmdLine, { onOutput: (line) => appendConsole(line) });
+        if (!result || !result.success) {
+          appendConsole("✗ Failed to start hotspot", "err");
+        } else {
+          appendConsole(`✓ Hotspot started on ${iface}`, "success");
 
-        // If runCmdSync returns without throwing, consider success
-        appendConsole(`✓ Hotspot started on ${iface}`, "success");
-
-        // Update state
-        if (hotspotActive) {
-          hotspotActive.value = true;
-          saveHotspotStatus?.();
+          // Update state
+          if (hotspotActive) {
+            hotspotActive.value = true;
+            saveHotspotStatus?.();
+          }
+          // Update buttons
+          if (ButtonState)
+            ButtonState.setButtonPair(
+              els.startHotspotBtn,
+              els.stopHotspotBtn,
+              true,
+            );
+          // Refresh status
+          if (refreshStatus)
+            setTimeout(
+              () => refreshStatus(),
+              ANIMATION_DELAYS?.STATUS_REFRESH || 300,
+            );
         }
-        // Update buttons
-        if (ButtonState)
-          ButtonState.setButtonPair(
-            els.startHotspotBtn,
-            els.stopHotspotBtn,
-            true,
-          );
-        // Refresh status
-        if (refreshStatus)
-          setTimeout(
-            () => refreshStatus(),
-            ANIMATION_DELAYS?.STATUS_REFRESH || 300,
-          );
       } catch (err: any) {
         appendConsole(
           String(err?.message || err || "Failed to start hotspot"),
           "err",
         );
-      } finally {
+      }
+      finally {
         // remove progress indicator
         if (progressHandle) ProgressIndicator?.remove(progressHandle);
         // Re-enable UI
@@ -428,55 +432,52 @@ const HotspotFeature = (() => {
         : null;
 
       try {
-        // Use runCmdAsync in the background to stop ongoing service gracefully
         const cmdLine = `sh ${HOTSPOT_SCRIPT} -k 2>&1`;
-        // onComplete callback handles the result
-        runCmdAsync?.(cmdLine, (result: any) => {
-          // Clean progress indicator
-          if (progressHandle) deps!.ProgressIndicator?.remove(progressHandle);
-          // Clear state
-          if (hotspotActive) {
-            hotspotActive.value = false;
-            saveHotspotStatus?.();
-          }
-          if (ButtonState)
-            ButtonState.setButtonPair(
-              els.startHotspotBtn,
-              els.stopHotspotBtn,
-              false,
-            );
+        const result = await d.runCommandAsyncPromise?.(cmdLine, { onOutput: (line) => appendConsole(line) });
+        // Clean progress indicator
+        if (progressHandle) d.ProgressIndicator?.remove(progressHandle);
+        // Clear state
+        if (hotspotActive) {
+          hotspotActive.value = false;
+          saveHotspotStatus?.();
+        }
+        if (ButtonState)
+          ButtonState.setButtonPair(
+            els.startHotspotBtn,
+            els.stopHotspotBtn,
+            false,
+          );
 
-          if (result?.success) {
-            appendConsole("✓ Hotspot stopped successfully", "success");
+        if (result?.success) {
+          appendConsole("✓ Hotspot stopped successfully", "success");
+        } else {
+          const output = String(result?.output || result?.error || "");
+          if (
+            output &&
+            (output.toLowerCase().includes("warn") ||
+              output.toLowerCase().includes("warning"))
+          ) {
+            appendConsole("⚠ Hotspot stop completed with warnings", "warn");
           } else {
-            const output = String(result?.output || result?.error || "");
-            if (
-              output &&
-              (output.toLowerCase().includes("warn") ||
-                output.toLowerCase().includes("warning"))
-            ) {
-              appendConsole("⚠ Hotspot stop completed with warnings", "warn");
-            } else {
-              appendConsole(
-                "✗ Failed to stop hotspot (may already be stopped)",
-                "warn",
-              );
-            }
-          }
-
-          // Re-enable UI
-          disableAllActions?.(false);
-          disableSettingsPopup?.(false, true);
-
-          // Refresh status if available
-          if (refreshStatus)
-            setTimeout(
-              () => refreshStatus?.(),
-              ANIMATION_DELAYS?.STATUS_REFRESH || 300,
+            appendConsole(
+              "✗ Failed to stop hotspot (may already be stopped)",
+              "warn",
             );
-        });
+          }
+        }
+
+        // Re-enable UI
+        disableAllActions?.(false);
+        disableSettingsPopup?.(false, true);
+
+        // Refresh status if available
+        if (refreshStatus)
+          setTimeout(
+            () => refreshStatus?.(),
+            ANIMATION_DELAYS?.STATUS_REFRESH || 300,
+          );
       } catch (err: any) {
-        if (progressHandle) deps!.ProgressIndicator?.remove(progressHandle);
+        if (progressHandle) d.ProgressIndicator?.remove(progressHandle);
         appendConsole(
           `✗ Failed to stop hotspot: ${String(err?.message || err)}`,
           "err",

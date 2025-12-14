@@ -1,3 +1,5 @@
+import { CommandResult } from "@/composables/useNativeCmd";
+
 export type ResizeDeps = {
   // Persistence & UI
   Storage?: {
@@ -26,6 +28,7 @@ export type ResizeDeps = {
     cmd: string,
     onComplete?: (result: any) => void,
   ) => string | null;
+  runCommandAsyncPromise?: (cmd: string, options?: { asRoot?: boolean; debug?: boolean; onOutput?: (line: string) => void }) => Promise<CommandResult>;
 
   // A convenience, higher-level helper used by the app to orchestrate long-running jobs
   executeCommandWithProgress?: (options: {
@@ -177,19 +180,31 @@ export async function trimSparseImage() {
     return;
   }
 
-  // Fallback: run sync
+  // Fallback: run async
   try {
-    if (!d.runCmdSync) throw new Error("Command bridge not available");
-    await d.runCmdSync(cmd);
-    d.appendConsole("✓ Sparse image trimmed successfully", "success");
-    d.updateModuleStatus?.();
-    d.disableAllActions?.(false);
-    d.disableSettingsPopup?.(false, true);
-    d.updateSparseInfo?.();
-    setTimeout(
-      () => d.refreshStatus?.(),
-      d.ANIMATION_DELAYS?.STATUS_REFRESH || 500,
-    );
+    const result = await d.runCommandAsyncPromise?.(cmd, { onOutput: (line) => d.appendConsole(line) });
+    if (result?.success) {
+      d.appendConsole("✓ Sparse image trimmed successfully", "success");
+      d.updateModuleStatus?.();
+      d.disableAllActions?.(false);
+      d.disableSettingsPopup?.(false, true);
+      d.updateSparseInfo?.();
+      setTimeout(
+        () => d.refreshStatus?.(),
+        d.ANIMATION_DELAYS?.STATUS_REFRESH ?? 500,
+      );
+    } else {
+      d.appendConsole("✗ Sparse image trim failed", "err");
+      d.appendConsole("This may be expected on some Android kernels", "warn");
+      d.updateModuleStatus?.();
+      d.disableAllActions?.(false);
+      d.disableSettingsPopup?.(false, true);
+      d.updateSparseInfo?.();
+      setTimeout(
+        () => d.refreshStatus?.(),
+        d.ANIMATION_DELAYS?.STATUS_REFRESH ?? 500,
+      );
+    }
   } catch (e: any) {
     d.appendConsole("✗ Sparse image trim failed", "err");
     d.appendConsole("This may be expected on some Android kernels", "warn");
@@ -199,7 +214,7 @@ export async function trimSparseImage() {
     d.updateSparseInfo?.();
     setTimeout(
       () => d.refreshStatus?.(),
-      d.ANIMATION_DELAYS?.STATUS_REFRESH || 500,
+      d.ANIMATION_DELAYS?.STATUS_REFRESH ?? 500,
     );
   }
 }
@@ -331,21 +346,33 @@ export async function resizeSparseImage() {
     return;
   }
 
-  // fallback to sync command
+  // fallback to async command
   try {
-    if (!d.runCmdSync) throw new Error("Command bridge not available");
-    const out = await d.runCmdSync(cmdStr);
-    d.appendConsole("✅ Sparse image resized successfully", "success");
-    d.appendConsole(`New size: ${newSizeGb}GB`, "info");
-    d.appendConsole("━━━ Resize Complete ━━━", "success");
-    d.updateModuleStatus?.();
-    d.disableAllActions?.(false);
-    d.disableSettingsPopup?.(false, true);
-    d.updateSparseInfo?.();
-    setTimeout(
-      () => d.refreshStatus?.(),
-      d.ANIMATION_DELAYS?.STATUS_REFRESH ?? 500,
-    );
+    const result = await d.runCommandAsyncPromise?.(cmdStr, { onOutput: (line) => d.appendConsole(line) });
+    if (result?.success) {
+      d.appendConsole("✅ Sparse image resized successfully", "success");
+      d.appendConsole(`New size: ${newSizeGb}GB`, "info");
+      d.appendConsole("━━━ Resize Complete ━━━", "success");
+      d.updateModuleStatus?.();
+      d.disableAllActions?.(false);
+      d.disableSettingsPopup?.(false, true);
+      d.updateSparseInfo?.();
+      setTimeout(
+        () => d.refreshStatus?.(),
+        d.ANIMATION_DELAYS?.STATUS_REFRESH ?? 500,
+      );
+    } else {
+      d.appendConsole("✗ Sparse image resize failed", "err");
+      d.appendConsole("Check the logs above for details", "err");
+      d.updateModuleStatus?.();
+      d.disableAllActions?.(false);
+      d.disableSettingsPopup?.(false, true);
+      d.updateSparseInfo?.();
+      setTimeout(
+        () => d.refreshStatus?.(),
+        d.ANIMATION_DELAYS?.STATUS_REFRESH ?? 500,
+      );
+    }
   } catch (e: any) {
     d.appendConsole("✗ Sparse image resize failed", "err");
     d.appendConsole("Check the logs above for details", "err");

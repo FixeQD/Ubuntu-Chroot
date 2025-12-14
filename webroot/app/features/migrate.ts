@@ -1,3 +1,5 @@
+import { CommandResult } from "@/composables/useNativeCmd";
+
 export type MigrateDeps = {
   // UI & console helpers
   appendConsole: (message: string, cls?: string) => void;
@@ -20,6 +22,7 @@ export type MigrateDeps = {
   PATH_CHROOT_SH: string;
   runCmdSync?: (cmd: string) => Promise<string>;
   runCmdAsync?: (cmd: string, onComplete?: (res: any) => void) => string | null;
+  runCommandAsyncPromise?: (cmd: string, options?: { asRoot?: boolean; debug?: boolean; onOutput?: (line: string) => void }) => Promise<CommandResult>;
   executeCommandWithProgress?: (options: {
     cmd: string;
     progress: { progressLine: HTMLElement; progressInterval?: any } | null;
@@ -184,44 +187,17 @@ export async function migrateToSparseImage(): Promise<void> {
         d.disableSettingsPopup?.(false, true);
       }
     } else {
-      // Fallback path: no executeCommandWithProgress utility; attempt an async-based
-      // command run and handle success/failure.
+      // Fallback path: use runCommandAsyncPromise
       try {
-        // Prefer runCmdSync to get final output; fallback to runCmdAsync if not present
-        if (d.runCmdSync) {
-          const out = await d.runCmdSync(migrateCommand);
-          d.appendConsole(String(out || ""), "info");
-          d.appendConsole(
-            "✅ Sparse image migration completed successfully!",
-            "success",
-          );
+        const result = await d.runCommandAsyncPromise?.(migrateCommand, { onOutput: (line) => d.appendConsole(line) });
+        if (result?.success) {
+          d.appendConsole("✅ Sparse image migration completed successfully!", "success");
           if (d.sparseMigrated) d.sparseMigrated.value = true;
           d.updateModuleStatus?.();
-        } else if (d.runCmdAsync) {
-          // Use runCmdAsync with callbacks
-          d.runCmdAsync(migrateCommand, (result: any) => {
-            if (result && result.success) {
-              d.appendConsole(
-                "✅ Sparse image migration completed successfully!",
-                "success",
-              );
-              if (d.sparseMigrated) d.sparseMigrated.value = true;
-              d.updateModuleStatus?.();
-            } else {
-              d.appendConsole("✗ Sparse image migration failed!", "err");
-              d.updateModuleStatus?.();
-            }
-            d.disableAllActions?.(false);
-            d.disableSettingsPopup?.(false, true);
-            setTimeout(
-              () => d.refreshStatus?.(),
-              (d.ANIMATION_DELAYS?.STATUS_REFRESH ?? 500) * 2,
-            );
-          });
         } else {
-          throw new Error("No command bridge available");
+          d.appendConsole("✗ Sparse image migration failed!", "err");
+          d.updateModuleStatus?.();
         }
-
         d.disableAllActions?.(false);
         d.disableSettingsPopup?.(false, true);
         setTimeout(
@@ -229,10 +205,7 @@ export async function migrateToSparseImage(): Promise<void> {
           (d.ANIMATION_DELAYS?.STATUS_REFRESH ?? 500) * 2,
         );
       } catch (err: any) {
-        d.appendConsole(
-          `✗ Sparse image migration failed: ${String(err?.message || err)}`,
-          "err",
-        );
+        d.appendConsole(`✗ Sparse image migration failed: ${String(err?.message || err)}`, "err");
         d.updateModuleStatus?.();
         d.disableAllActions?.(false);
         d.disableSettingsPopup?.(false, true);

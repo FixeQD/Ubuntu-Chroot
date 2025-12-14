@@ -228,17 +228,15 @@ export function useFeatures(
         OTA_UPDATER,
         appendConsole,
         runCmdSync: (cmdStr: string) => cmd.runCommandSync(cmdStr),
-        runCmdAsync: (
-          cmdStr: string,
-          onOutput?: (line: string) => void,
-          onError?: (err: string) => void,
-          onComplete?: (res: any) => void,
-        ) =>
+        runCmdAsync: (cmdStr: string, onComplete?: (res: any) => void) =>
           cmd.runCommandAsync(cmdStr, {
             asRoot: true,
-            debug: false, // Will be passed from parent
-            callbacks: { onOutput, onError, onComplete },
+            debug: false,
+            callbacks: { onComplete },
           }),
+        runCommandAsyncPromise: (cmdStr: string, options?: { asRoot?: boolean; debug?: boolean; onOutput?: (line: string) => void }) =>
+          cmd.runCommandAsyncPromise(cmdStr, { asRoot: true, ...options }),
+        showConfirmDialog: async (title: string, message: string, confirmText?: string, cancelText?: string) => Promise.resolve(window.confirm(message)),
         withCommandGuard,
         ANIMATION_DELAYS: {
           POPUP_CLOSE: 450,

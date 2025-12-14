@@ -1,3 +1,5 @@
+import { CHROOT_DIR } from "../composables/constants";
+
 export class NetworkInterfaceManager {
   constructor(
     private deps: {
@@ -112,16 +114,21 @@ export class NetworkInterfaceManager {
 
     // No cache or forced refresh
     try {
-      const cmd = `sh ${this.scriptPath} list-iface 2>&1`;
+      const cmd = `sh ${CHROOT_DIR}/forward-nat.sh list-iface 2>&1`;
       const out = await this.deps.runCmdSync(cmd);
       const text = String(out || "").trim();
 
-      const interfacesRaw = text
+      let interfacesRaw = text
         ? text
             .split(/[\r\n,]+/)
             .map((s) => s.trim())
             .filter(Boolean)
         : [];
+
+      // Filter out ap0 interface for hotspot
+      if (this.cacheKey === "chroot_hotspot_interfaces_cache") {
+        interfacesRaw = interfacesRaw.filter((s) => !s.startsWith("ap0"));
+      }
 
       try {
         this.deps.Storage.setJSON?.(this.cacheKey, interfacesRaw);

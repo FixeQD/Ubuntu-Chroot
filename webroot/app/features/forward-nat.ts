@@ -1,4 +1,5 @@
 import { NetworkInterfaceManager } from "@/services/NetworkInterfaceManager";
+import type { CommandResult } from "@/composables/useNativeCmd";
 
 export type ForwardNatDeps = {
   // UI element map (optional, but preferred)
@@ -33,6 +34,7 @@ export type ForwardNatDeps = {
   appendConsole: (text: string, cls?: string) => void;
   runCmdSync: (cmd: string) => Promise<string>;
   runCmdAsync?: (cmd: string, onComplete?: (res: any) => void) => string | null;
+  runCommandAsyncPromise?: (cmd: string, options?: { asRoot?: boolean; debug?: boolean; onOutput?: (line: string) => void }) => Promise<CommandResult>;
 
   // Flow & UI management
   withCommandGuard?: (id: string, fn: () => Promise<void>) => Promise<void>;
@@ -263,16 +265,13 @@ export async function startForwarding() {
     d.activeCommandId && (d.activeCommandId.value = "forwarding-start");
 
     try {
-      // start forwarding using script
       const cmd = `sh ${d.FORWARD_NAT_SCRIPT} -i "${iface}" 2>&1`;
-      const out = await d.runCmdSync(cmd);
-      const outStr = String(out || "");
-      if (outStr) {
-        // display output lines
-        outStr.split(/\r?\n/).forEach((l) => {
-          if (l && l.trim()) d.appendConsole?.(String(l).trim());
-        });
+      const result = await d.runCommandAsyncPromise?.(cmd, { onOutput: (line) => d.appendConsole?.(line) });
+      if (!result || !result.success) {
+        d.appendConsole?.("✗ Failed to start forwarding", "err");
+        return;
       }
+      const outStr = result.output || '';
 
       // Heuristic: treat as success unless we see explicit error keywords.
       const failureRegex = /fail(ed)?|error|permission denied|not found/i;
@@ -347,56 +346,55 @@ export async function stopForwarding() {
 
     try {
       const cmd = `sh ${d.FORWARD_NAT_SCRIPT} -k 2>&1`;
-      d.runCmdAsync?.(cmd, (result: any) => {
-        // cleanup
-        d.ProgressIndicator?.remove?.(progress ?? null);
-        // Always clear the state marker, even if there were errors
-        if (d.forwardingActive) {
-          d.forwardingActive.value = false;
-        }
-        saveForwardingStatus();
-        d.ButtonState?.setButtonPair?.(
-          d.els?.startForwardingBtn ?? null,
-          d.els?.stopForwardingBtn ?? null,
-          false,
-        );
+      const result = await d.runCommandAsyncPromise?.(cmd, { onOutput: (line) => d.appendConsole?.(line) });
+      // cleanup
+      d.ProgressIndicator?.remove?.(progress ?? null);
+      // Always clear the state marker, even if there were errors
+      if (d.forwardingActive) {
+        d.forwardingActive.value = false;
+      }
+      saveForwardingStatus();
+      d.ButtonState?.setButtonPair?.(
+        d.els?.startForwardingBtn ?? null,
+        d.els?.stopForwardingBtn ?? null,
+        false,
+      );
 
-        if (result?.success) {
-          d.appendConsole?.("✓ Forwarding stopped successfully", "success");
+      if (result?.success) {
+        d.appendConsole?.("✓ Forwarding stopped successfully", "success");
+      } else {
+        const output = result?.output || result?.error || "";
+        if (
+          String(output).toLowerCase().includes("warn") ||
+          String(output).toLowerCase().includes("warning")
+        ) {
+          d.appendConsole?.(
+            "⚠ Forwarding cleanup completed with warnings",
+            "warn",
+          );
         } else {
-          const output = result?.output || result?.error || "";
-          if (
-            String(output).toLowerCase().includes("warn") ||
-            String(output).toLowerCase().includes("warning")
-          ) {
-            d.appendConsole?.(
-              "⚠ Forwarding cleanup completed with warnings",
-              "warn",
-            );
-          } else {
-            d.appendConsole?.(
-              "⚠ Forwarding stop completed (some rules may not have existed)",
-              "warn",
-            );
-          }
-          // show possible debugging output
-          if (String(output).trim()) {
-            String(output)
-              .split("\n")
-              .forEach((line) => {
-                if (line && line.trim()) d.appendConsole?.(String(line).trim());
-              });
-          }
+          d.appendConsole?.(
+            "⚠ Forwarding stop completed (some rules may not have existed)",
+            "warn",
+          );
         }
+        // show possible debugging output
+        if (String(output).trim()) {
+          String(output)
+            .split("\n")
+            .forEach((line) => {
+              if (line && line.trim()) d.appendConsole?.(String(line).trim());
+            });
+        }
+      }
 
-        if (d.activeCommandId) d.activeCommandId.value = null;
-        d.disableAllActions?.(false);
-        d.disableSettingsPopup?.(false, true);
-        setTimeout(
-          () => d.refreshStatus?.(),
-          d.ANIMATION_DELAYS?.STATUS_REFRESH ?? 300,
-        );
-      });
+      if (d.activeCommandId) d.activeCommandId.value = null;
+      d.disableAllActions?.(false);
+      d.disableSettingsPopup?.(false, true);
+      setTimeout(
+        () => d.refreshStatus?.(),
+        d.ANIMATION_DELAYS?.STATUS_REFRESH ?? 300,
+      );
     } catch (err: any) {
       d.ProgressIndicator?.remove?.(progress ?? null);
       d.appendConsole?.(

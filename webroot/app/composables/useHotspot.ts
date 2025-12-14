@@ -32,6 +32,7 @@ export function useHotspot(consoleApi: ReturnType<typeof useConsole>) {
     "chroot_hotspot_iface",
     (interfaces: string[]) => {
       hotspotIfaces.value = interfaces
+        .filter((s) => !s.startsWith("ap0"))
         .map((s: string) => {
           const trimmed = String(s || "").trim();
           if (!trimmed) return null;
@@ -68,6 +69,7 @@ export function useHotspot(consoleApi: ReturnType<typeof useConsole>) {
         : null;
       if (Array.isArray(cached) && cached.length > 0) {
         hotspotIfaces.value = cached
+          .filter((s) => !s.startsWith("ap0"))
           .map((s: string) => {
             const trimmed = String(s || "").trim();
             if (!trimmed) return null;
