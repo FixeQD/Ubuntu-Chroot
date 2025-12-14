@@ -54,7 +54,7 @@ cd ..
 rsync -a --exclude='.git*' --exclude='node_modules' --exclude='Screenshots' --exclude='Docker' --exclude='CHANGELOG.md' --exclude='out' --exclude='update-*.json' --exclude='update_meta.sh' --exclude='build_zip.sh' "$PWD/" "$TMP_DIR/"
 
 # Replace webroot/app with built .output
-rm -rf "$TMP_DIR/webroot/app"
+rm -rf "$TMP_DIR/webroot"
 cp -r webroot/app/.output/public "$TMP_DIR/webroot"
 
 # For update builds, remove tar.gz files and add update marker
