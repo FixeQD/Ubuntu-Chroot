@@ -180,15 +180,37 @@ export async function backupChroot() {
     d.disableAllActions?.(true);
     d.disableSettingsPopup?.(true);
 
-    if (d.ensureChrootStopped) {
-      const isStopped = await d.ensureChrootStopped();
-      if (!isStopped) {
-        d.appendConsole("✗ Failed to stop chroot - backup aborted", "err");
-        if (d.activeCommandId) d.activeCommandId.value = null;
-        d.disableAllActions?.(false);
-        d.disableSettingsPopup?.(false, true);
-        return;
+    // Check and stop chroot if running
+    try {
+      const statusOut = d.runCmdSync(`${d.PATH_CHROOT_SH} raw-status`);
+      const status = String(statusOut || "")
+        .trim()
+        .toUpperCase();
+      if (status === "RUNNING") {
+        d.appendConsole("Stopping chroot before backup...", "info");
+        d.runCmdSync(`${d.PATH_CHROOT_SH} stop --no-shell`);
+        // Verify stopped
+        const verifyOut = d.runCmdSync(`${d.PATH_CHROOT_SH} raw-status`);
+        const verifyStatus = String(verifyOut || "")
+          .trim()
+          .toUpperCase();
+        if (verifyStatus !== "STOPPED") {
+          d.appendConsole("✗ Failed to stop chroot - backup aborted", "err");
+          if (d.activeCommandId) d.activeCommandId.value = null;
+          d.disableAllActions?.(false);
+          d.disableSettingsPopup?.(false, true);
+          return;
+        }
       }
+    } catch (err: any) {
+      d.appendConsole(
+        `✗ Failed to check/stop chroot: ${String(err?.message || err)} - backup aborted`,
+        "err",
+      );
+      if (d.activeCommandId) d.activeCommandId.value = null;
+      d.disableAllActions?.(false);
+      d.disableSettingsPopup?.(false, true);
+      return;
     }
 
     d.updateStatus?.("backing up");
@@ -321,15 +343,37 @@ export async function restoreChroot() {
     d.disableAllActions?.(true);
     d.disableSettingsPopup?.(true);
 
-    if (d.ensureChrootStopped) {
-      const stopped = await d.ensureChrootStopped();
-      if (!stopped) {
-        d.appendConsole("✗ Failed to stop chroot - restore aborted", "err");
-        if (d.activeCommandId) d.activeCommandId.value = null;
-        d.disableAllActions?.(false);
-        d.disableSettingsPopup?.(false, true);
-        return;
+    // Check and stop chroot if running
+    try {
+      const statusOut = d.runCmdSync(`${d.PATH_CHROOT_SH} raw-status`);
+      const status = String(statusOut || "")
+        .trim()
+        .toUpperCase();
+      if (status === "RUNNING") {
+        d.appendConsole("Stopping chroot before restore...", "info");
+        d.runCmdSync(`${d.PATH_CHROOT_SH} stop --no-shell`);
+        // Verify stopped
+        const verifyOut = d.runCmdSync(`${d.PATH_CHROOT_SH} raw-status`);
+        const verifyStatus = String(verifyOut || "")
+          .trim()
+          .toUpperCase();
+        if (verifyStatus !== "STOPPED") {
+          d.appendConsole("✗ Failed to stop chroot - restore aborted", "err");
+          if (d.activeCommandId) d.activeCommandId.value = null;
+          d.disableAllActions?.(false);
+          d.disableSettingsPopup?.(false, true);
+          return;
+        }
       }
+    } catch (err: any) {
+      d.appendConsole(
+        `✗ Failed to check/stop chroot: ${String(err?.message || err)} - restore aborted`,
+        "err",
+      );
+      if (d.activeCommandId) d.activeCommandId.value = null;
+      d.disableAllActions?.(false);
+      d.disableSettingsPopup?.(false, true);
+      return;
     }
 
     d.updateStatus?.("restoring");
