@@ -107,10 +107,10 @@ export function useChroot(consoleApi: ReturnType<typeof useConsole>) {
 
     let chrootCmd = "ubuntu-chroot";
     try {
-      const check = await cmd.runCommandSync(
+      const result = await cmd.runCommandAsyncPromise(
         'command -v ubuntu-chroot 2>/dev/null || echo ""',
       );
-      if (!String(check || "").trim()) {
+      if (!String(result.output || "").trim()) {
         chrootCmd = `${PATH_CHROOT_SH}`;
       }
     } catch {
@@ -140,9 +140,18 @@ export function useChroot(consoleApi: ReturnType<typeof useConsole>) {
       return false;
     }
     try {
-      await cmd.runCommandSync('echo "test"');
-      if (!silent) appendConsole("Root access available", "info");
-      return true;
+      const result = await cmd.runCommandAsyncPromise('echo "test"');
+      if (result.success) {
+        if (!silent) appendConsole("Root access available", "info");
+        return true;
+      } else {
+        if (!silent)
+          appendConsole(
+            `Failed to detect root execution method: ${result.error || 'Unknown error'}`,
+            "err",
+          );
+        return false;
+      }
     } catch (e: any) {
       if (!silent)
         appendConsole(
@@ -356,10 +365,10 @@ export function useChroot(consoleApi: ReturnType<typeof useConsole>) {
 
   async function readBootFile(silent = false) {
     try {
-      const out = await cmd.runCommandSync(
+      const result = await cmd.runCommandAsyncPromise(
         `cat ${BOOT_FILE} 2>/dev/null || echo 0`,
       );
-      runAtBoot.value = String(out || "").trim() === "1";
+      runAtBoot.value = String(result.output || "").trim() === "1";
       if (!silent)
         appendConsole(
           `Run-at-boot: ${runAtBoot.value ? "enabled" : "disabled"}`,
@@ -372,13 +381,18 @@ export function useChroot(consoleApi: ReturnType<typeof useConsole>) {
 
   async function writeBootFile() {
     try {
-      await cmd.runCommandSync(
+      const result = await cmd.runCommandAsyncPromise(
         `mkdir -p ${CHROOT_DIR} && echo ${runAtBoot.value ? 1 : 0} > ${BOOT_FILE}`,
       );
-      appendConsole(
-        `Run-at-boot ${runAtBoot.value ? "enabled" : "disabled"}`,
-        "success",
-      );
+      if (result.success) {
+        appendConsole(
+          `Run-at-boot ${runAtBoot.value ? "enabled" : "disabled"}`,
+          "success",
+        );
+      } else {
+        appendConsole(`✗ Failed to set run-at-boot: ${result.error || 'Unknown error'}`, "err");
+        await readBootFile(true);
+      }
     } catch (e: any) {
       appendConsole(`✗ Failed to set run-at-boot: ${e.message}`, "err");
       await readBootFile(true);
@@ -391,10 +405,10 @@ export function useChroot(consoleApi: ReturnType<typeof useConsole>) {
 
   async function readDozeOffFile(silent = false) {
     try {
-      const out = await cmd.runCommandSync(
+      const result = await cmd.runCommandAsyncPromise(
         `cat ${DOZE_OFF_FILE} 2>/dev/null || echo 1`,
       );
-      androidOptimize.value = String(out || "").trim() === "1";
+      androidOptimize.value = String(result.output || "").trim() === "1";
       if (!silent)
         appendConsole(
           `Android optimizations: ${androidOptimize.value ? "enabled" : "disabled"}`,
@@ -407,13 +421,21 @@ export function useChroot(consoleApi: ReturnType<typeof useConsole>) {
 
   async function writeDozeOffFile() {
     try {
-      await cmd.runCommandSync(
+      const result = await cmd.runCommandAsyncPromise(
         `mkdir -p ${CHROOT_DIR} && echo ${androidOptimize.value ? 1 : 0} > ${DOZE_OFF_FILE}`,
       );
-      appendConsole(
-        `Android optimizations ${androidOptimize.value ? "enabled" : "disabled"}`,
-        "success",
-      );
+      if (result.success) {
+        appendConsole(
+          `Android optimizations ${androidOptimize.value ? "enabled" : "disabled"}`,
+          "success",
+        );
+      } else {
+        appendConsole(
+          `✗ Failed to set Android optimizations: ${result.error || 'Unknown error'}`,
+          "err",
+        );
+        await readDozeOffFile(true);
+      }
     } catch (e: any) {
       appendConsole(
         `✗ Failed to set Android optimizations: ${e.message}`,
@@ -425,10 +447,10 @@ export function useChroot(consoleApi: ReturnType<typeof useConsole>) {
 
   async function loadPostExecScript() {
     try {
-      const out = await cmd.runCommandSync(
+      const result = await cmd.runCommandAsyncPromise(
         `cat ${CHROOT_DIR}/post_exec.sh 2>/dev/null || echo ''`,
       );
-      postExecScript.value = String(out || "").trim();
+      postExecScript.value = String(result.output || "").trim();
     } catch (e) {
       appendConsole(`Failed to load post-exec script: ${String(e)}`, "warn");
       postExecScript.value = "";
@@ -445,11 +467,19 @@ export function useChroot(consoleApi: ReturnType<typeof useConsole>) {
         binary += String.fromCharCode.apply(null, Array.from(slice));
       }
       const base64 = btoa(binary);
-      await cmd.runCommandSync(
+      const result1 = await cmd.runCommandAsyncPromise(
         `echo '${base64}' | base64 -d > ${CHROOT_DIR}/post_exec.sh`,
       );
-      await cmd.runCommandSync(`chmod 755 ${CHROOT_DIR}/post_exec.sh`);
-      appendConsole("Post-exec script saved successfully", "success");
+      if (!result1.success) {
+        appendConsole(`Failed to save post-exec script: ${result1.error || 'Unknown error'}`, "err");
+        return;
+      }
+      const result2 = await cmd.runCommandAsyncPromise(`chmod 755 ${CHROOT_DIR}/post_exec.sh`);
+      if (result2.success) {
+        appendConsole("Post-exec script saved successfully", "success");
+      } else {
+        appendConsole(`Failed to set permissions: ${result2.error || 'Unknown error'}`, "err");
+      }
     } catch (e: any) {
       appendConsole(`Failed to save post-exec script: ${e.message}`, "err");
     }
@@ -458,9 +488,13 @@ export function useChroot(consoleApi: ReturnType<typeof useConsole>) {
   async function clearPostExecScript() {
     postExecScript.value = "";
     try {
-      await cmd.runCommandSync(`echo '' > ${CHROOT_DIR}/post_exec.sh`);
-      appendConsole("Post-exec script cleared successfully", "info");
-    } catch (e: any) {
+      const result = await cmd.runCommandAsyncPromise(`echo '' > ${CHROOT_DIR}/post_exec.sh`);
+      if (result.success) {
+        appendConsole("Post-exec script cleared successfully", "info");
+      } else {
+        appendConsole(`Failed to clear post-exec script: ${result.error || 'Unknown error'}`, "err");
+      }
+    } catch (e) {
       appendConsole(`Failed to clear post-exec script: ${e.message}`, "err");
     }
   }
