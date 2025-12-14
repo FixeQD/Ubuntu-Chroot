@@ -229,28 +229,33 @@ watch(
     try {
       const rootOK = await checkRootAccess();
       if (rootOK) {
-        await refreshStatus();
-        await fetchUsers();
+        await Promise.all([refreshStatus(), fetchUsers()]);
       }
 
-      await readBootFile(true).catch(() => {});
-      await readDozeOffFile(true).catch(() => {});
-      try {
-        if (
-          typeof HotspotFeature !== "undefined" &&
-          HotspotFeature.fetchInterfaces
-        ) {
-          await HotspotFeature.fetchInterfaces(false, true).catch(() => {});
-        }
-      } catch {}
-      try {
-        if (
-          typeof ForwardNatFeature !== "undefined" &&
-          ForwardNatFeature.fetchInterfaces
-        ) {
-          await ForwardNatFeature.fetchInterfaces(false, true).catch(() => {});
-        }
-      } catch {}
+      await Promise.all([
+        readBootFile(true).catch(() => {}),
+        readDozeOffFile(true).catch(() => {}),
+        (async () => {
+          try {
+            if (
+              typeof HotspotFeature !== "undefined" &&
+              HotspotFeature.fetchInterfaces
+            ) {
+              await HotspotFeature.fetchInterfaces(false, true).catch(() => {});
+            }
+          } catch {}
+        })(),
+        (async () => {
+          try {
+            if (
+              typeof ForwardNatFeature !== "undefined" &&
+              ForwardNatFeature.fetchInterfaces
+            ) {
+              await ForwardNatFeature.fetchInterfaces(false, true).catch(() => {});
+            }
+          } catch {}
+        })(),
+      ]);
     } catch (e) {
       appendConsole(`Delayed root check failed: ${String(e)}`, "warn");
     }
@@ -292,11 +297,12 @@ onMounted(async () => {
 
   const rootOK = await checkRootAccess();
   if (rootOK) {
-    await refreshStatus();
-    await fetchUsers();
+    await Promise.all([refreshStatus(), fetchUsers()]);
   }
-  await readBootFile(true).catch(() => {});
-  await readDozeOffFile(true).catch(() => {});
+  await Promise.all([
+    readBootFile(true).catch(() => {}),
+    readDozeOffFile(true).catch(() => {}),
+  ]);
 
   initFeatureModules();
   setTimeout(() => {
