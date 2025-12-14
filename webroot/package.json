@@ -3,13 +3,11 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "build": "nuxt build",
-    "dev": "nuxt dev",
     "generate": "nuxt generate",
-    "preview": "nuxt preview",
     "postinstall": "nuxt prepare",
     "format": "prettier --write .",
-    "lint": "prettier --check ."
+    "lint": "prettier --check .",
+    "devtest": "bun generate; adb shell rm -rf /data/adb/modules/ubuntu-chroot/webroot/*; adb push .output/public/* /data/adb/modules/ubuntu-chroot/webroot"
   },
   "dependencies": {
     "nuxt": "^4.2.2",

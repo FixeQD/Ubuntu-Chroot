@@ -347,7 +347,7 @@ const HotspotFeature = (() => {
         : null;
 
       try {
-        const cmdLine = `sh ${HOTSPOT_SCRIPT} start -i "${iface}" -s "${ssid}" -p "${password}" -b "${band}" -c "${channel}" 2>&1`;
+        const cmdLine = `sh ${HOTSPOT_SCRIPT} -o "${iface}" -s "${ssid}" -p "${password}" -b "${band}" -c "${channel}" 2>&1`;
         // The script may emit logs - but `runCmdSync` will wait for completion
         const output = await runCmdSync(cmdLine);
 
