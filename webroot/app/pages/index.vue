@@ -42,6 +42,7 @@
       :postExecScript="postExecScript"
       :debugMode="debugMode"
       :androidOptimize="androidOptimize"
+      :disabled="globalDisabled"
       @close="closeSettingsPopup"
       @update:postExecScript="postExecScript = $event"
       @update:debugMode="debugMode = $event"
@@ -55,6 +56,7 @@
     />
 
     <SparseSettingsPopup
+      :disabled="globalDisabled"
       @close="closeSparseSettingsPopup"
       @trimSparseImage="trimSparseImage"
       @resizeSparseImage="resizeSparseImage"
@@ -71,6 +73,7 @@
       :hotspotBand="hotspotBand"
       :hotspotChannel="hotspotChannel"
       :hotspotChannels="hotspotChannels"
+      :disabled="globalDisabled"
       @close="closeHotspotPopup"
       @dismissHotspotWarning="dismissHotspotWarning"
       @update:hotspotIface="hotspotIface = $event"
@@ -87,6 +90,7 @@
     <ForwardNatPopup
       :forwardNatIfaces="forwardNatIfaces"
       :forwardNatIface="forwardNatIface"
+      :disabled="globalDisabled"
       @close="closeForwardNatPopup"
       @update:forwardNatIface="forwardNatIface = $event"
       @startForwarding="startForwarding"
@@ -130,6 +134,7 @@ import { ROOTFS_DIR } from "@/composables/constants";
 const cmd = useNativeCmd();
 const consoleApi = useConsole();
 const showLoading = ref(true);
+const globalDisabled = computed(() => !!activeCommandId.value);
 
 const {
   statusText,
@@ -331,6 +336,11 @@ onMounted(async () => {
       }
     } catch {}
   }, 250);
+
+  // Fallback timeout to prevent hanging loading screen
+  setTimeout(() => {
+    showLoading.value = false;
+  }, 10000);
 
   showLoading.value = false;
 });

@@ -45,6 +45,7 @@
                 id="hotspot-iface"
                 v-model="internalIface"
                 :disabled="
+                  disabled ||
                   hotspotLoading ||
                   (hotspotIfaces && hotspotIfaces.length === 0) ||
                   !!hotspotIfaceError
@@ -83,6 +84,7 @@
                 id="hotspot-ssid"
                 type="text"
                 :value="hotspotSsid"
+                :disabled="disabled"
                 @input="$emit('update:hotspotSsid', $event.target.value)"
                 placeholder="MyHotspot"
                 required
@@ -96,6 +98,7 @@
                   id="hotspot-password"
                   type="password"
                   :value="hotspotPassword"
+                  :disabled="disabled"
                   @input="$emit('update:hotspotPassword', $event.target.value)"
                   placeholder="Min 8 characters"
                   minlength="8"
@@ -105,6 +108,7 @@
                   type="button"
                   id="toggle-password"
                   class="password-toggle"
+                  :disabled="disabled"
                   title="Toggle password visibility"
                   @click="$emit('toggleHotspotPassword')"
                 >
@@ -118,6 +122,7 @@
               <select
                 id="hotspot-band"
                 :value="hotspotBand"
+                :disabled="disabled"
                 @change="$emit('update:hotspotBand', $event.target.value)"
               >
                 <option value="2">2.4GHz</option>
@@ -130,6 +135,7 @@
               <select
                 id="hotspot-channel"
                 :value="hotspotChannel"
+                :disabled="disabled"
                 @change="$emit('update:hotspotChannel', $event.target.value)"
                 required
               >
@@ -148,6 +154,7 @@
             <button
               id="refresh-hotspot-ifaces-btn"
               class="btn"
+              :disabled="disabled"
               @click="$emit('refreshHotspotIfaces')"
               title="Reload interface list"
             >
@@ -157,6 +164,7 @@
             <button
               id="start-hotspot-btn"
               class="btn"
+              :disabled="disabled"
               @click="$emit('startHotspot')"
             >
               Start Hotspot
@@ -164,6 +172,7 @@
             <button
               id="stop-hotspot-btn"
               class="btn danger"
+              :disabled="disabled"
               @click="$emit('stopHotspot')"
             >
               Stop Hotspot
@@ -200,6 +209,7 @@ interface Props {
   hotspotChannels: number[] | null | undefined;
   hotspotLoading?: boolean;
   hotspotIfaceError?: string | null | undefined;
+  disabled: boolean;
 }
 
 const props = defineProps<Props>();

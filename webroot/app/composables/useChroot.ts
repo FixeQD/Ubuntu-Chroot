@@ -312,9 +312,6 @@ export function useChroot(consoleApi: ReturnType<typeof useConsole>) {
 
       await nextTick();
       await new Promise((resolve) => setTimeout(resolve, 0));
-      consoleApi
-        .scrollToBottom({ behavior: "smooth", waitMs: 200 })
-        .catch(() => {});
 
       const actionText =
         action === "start"
@@ -327,6 +324,10 @@ export function useChroot(consoleApi: ReturnType<typeof useConsole>) {
         "dots",
         consoleRef.value || document.getElementById("console"),
       );
+
+      consoleApi
+        .scrollToBottom({ behavior: "smooth", waitMs: 400 })
+        .catch(() => {});
 
       const cmdStr = `${PATH_CHROOT_SH} ${action} --no-shell`;
       console.log(`Running command: ${cmdStr}`);

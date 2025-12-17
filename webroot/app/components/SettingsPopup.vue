@@ -20,6 +20,7 @@
             id="post-exec-script"
             class="script-editor"
             :value="postExecScript"
+            :readonly="disabled"
             @input="$emit('update:postExecScript', $event.target.value)"
             placeholder="echo 'Chroot started successfully'\n# Add your commands here"
             rows="6"
@@ -28,6 +29,7 @@
             <button
               id="save-script"
               class="btn small"
+              :disabled="disabled"
               @click="$emit('savePostExecScript')"
             >
               Save
@@ -35,6 +37,7 @@
             <button
               id="clear-script"
               class="btn outline small"
+              :disabled="disabled"
               @click="$emit('clearPostExecScript')"
             >
               Clear
@@ -47,7 +50,12 @@
           <p class="setting-desc">
             Apply incremental updates to the chroot environment
           </p>
-          <button id="update-btn" class="btn" @click="$emit('updateChroot')">
+          <button
+            id="update-btn"
+            class="btn"
+            :disabled="disabled"
+            @click="$emit('updateChroot')"
+          >
             Update Chroot
           </button>
         </div>
@@ -59,12 +67,18 @@
             backups
           </p>
           <div class="script-actions">
-            <button id="backup-btn" class="btn" @click="$emit('backupChroot')">
+            <button
+              id="backup-btn"
+              class="btn"
+              :disabled="disabled"
+              @click="$emit('backupChroot')"
+            >
               Backup Chroot
             </button>
             <button
               id="restore-btn"
               class="btn danger"
+              :disabled="disabled"
               @click="$emit('restoreChroot')"
             >
               Restore Chroot
@@ -78,6 +92,7 @@
           <button
             id="uninstall-btn"
             class="btn danger"
+            :disabled="disabled"
             @click="$emit('uninstallChroot')"
           >
             Uninstall Chroot
@@ -112,6 +127,7 @@
                   id="debug-toggle"
                   type="checkbox"
                   :checked="debugMode"
+                  :disabled="disabled"
                   @change="
                     $emit(
                       'update:debugMode',
@@ -140,6 +156,7 @@
                   id="android-optimize-toggle"
                   type="checkbox"
                   :checked="androidOptimize"
+                  :disabled="disabled"
                   @change="
                     $emit(
                       'update:androidOptimize',
@@ -165,6 +182,7 @@ interface Props {
   postExecScript: string;
   debugMode: boolean;
   androidOptimize: boolean;
+  disabled: boolean;
 }
 
 const props = defineProps<Props>();

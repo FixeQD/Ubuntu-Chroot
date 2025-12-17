@@ -16,7 +16,7 @@ export function createProgressIndicator(
   const SPINNER_CHARS = ["|", "/", "-", "\\"];
   const SPINNER_INTERVAL_MS = 200;
   const DOTS_INTERVAL_MS = 400;
-  const PREFIX = "⏳ ";
+  const PREFIX = "⌛ ";
 
   // Defensive: resolve container
   const resolvedContainer =

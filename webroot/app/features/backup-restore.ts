@@ -413,7 +413,7 @@ export async function restoreChroot() {
         d.appendConsole("━━━ Restore Complete ━━━", "success");
         d.updateStatus?.("stopped");
         d.updateModuleStatus?.();
-        d.disableAllActions?.(true);
+        d.disableAllActions?.(false);
         d.disableSettingsPopup?.(false, true);
         setTimeout(
           () => d.refreshStatus?.(),

@@ -26,6 +26,7 @@
             <button
               id="trim-sparse-btn"
               class="btn"
+              :disabled="disabled"
               @click="$emit('trimSparseImage')"
             >
               Trim Sparse Image
@@ -42,6 +43,7 @@
             <button
               id="resize-sparse-btn"
               class="btn outline"
+              :disabled="disabled"
               @click="$emit('resizeSparseImage')"
             >
               Resize Sparse Image
@@ -62,6 +64,12 @@
 
 <script setup lang="ts">
 import { ref } from "vue";
+
+interface Props {
+  disabled: boolean;
+}
+
+const props = defineProps<Props>();
 
 const popupRef = ref<HTMLElement | null>(null);
 

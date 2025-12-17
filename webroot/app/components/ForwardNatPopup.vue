@@ -25,6 +25,7 @@
               id="forward-nat-iface"
               v-model="internalIface"
               :disabled="
+                disabled ||
                 forwardNatLoading ||
                 (forwardNatIfaces && forwardNatIfaces.length === 0)
               "
@@ -52,6 +53,7 @@
             <button
               id="start-forwarding-btn"
               class="btn"
+              :disabled="disabled"
               @click="$emit('startForwarding')"
             >
               Start Forwarding
@@ -59,6 +61,7 @@
             <button
               id="stop-forwarding-btn"
               class="btn danger"
+              :disabled="disabled"
               @click="$emit('stopForwarding')"
             >
               Stop Forwarding
@@ -77,6 +80,7 @@ interface Props {
   forwardNatIfaces?: Array<{ value: string; label: string }>;
   forwardNatIface?: string;
   forwardNatLoading?: boolean;
+  disabled: boolean;
 }
 
 const props = defineProps<Props>();
