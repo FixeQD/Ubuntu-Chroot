@@ -36,6 +36,7 @@ export function useChroot(consoleApi: ReturnType<typeof useConsole>) {
   const rootAccessConfirmedRef = ref<boolean>(cmd.isAvailable.value);
   const showProgress = ref<boolean>(false);
   const progressType = ref<"backup" | "restore" | null>(null);
+  const showUpdateConfirm = ref(false);
 
   const statusDotClass = computed(() => {
     switch (statusText.value) {
@@ -524,11 +525,11 @@ export function useChroot(consoleApi: ReturnType<typeof useConsole>) {
       return;
     }
 
-    const confirmed = window.confirm(
-      "Update Chroot Environment\n\nThis will apply any available updates to the chroot environment.\n\nThe chroot will be started if it's not running. Continue?",
-    );
+    showUpdateConfirm.value = true;
+  }
 
-    if (!confirmed) return;
+  async function confirmUpdate(closeSettingsPopup: () => void) {
+    showUpdateConfirm.value = false;
 
     closeSettingsPopup();
 
@@ -580,6 +581,7 @@ export function useChroot(consoleApi: ReturnType<typeof useConsole>) {
     rootAccessConfirmedRef,
     showProgress,
     progressType,
+    showUpdateConfirm,
     statusDotClass,
     appendConsole,
     withCommandGuard,
@@ -602,5 +604,6 @@ export function useChroot(consoleApi: ReturnType<typeof useConsole>) {
     savePostExecScript,
     clearPostExecScript,
     updateChroot,
+    confirmUpdate,
   };
 }

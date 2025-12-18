@@ -97,6 +97,12 @@
       @stopForwarding="stopForwarding"
     />
 
+    <UpdateConfirmPopup
+      :visible="showUpdateConfirm"
+      @confirm="confirmUpdate(closeSettingsPopup)"
+      @cancel="showUpdateConfirm = false"
+    />
+
     <Footer />
   </div>
 </template>
@@ -115,6 +121,7 @@ import SettingsPopup from "@/components/SettingsPopup.vue";
 import SparseSettingsPopup from "@/components/SparseSettingsPopup.vue";
 import HotspotPopup from "@/components/HotspotPopup.vue";
 import ForwardNatPopup from "@/components/ForwardNatPopup.vue";
+import UpdateConfirmPopup from "@/components/UpdateConfirmPopup.vue";
 import Footer from "@/components/Footer.vue";
 import LoadingScreen from "@/components/LoadingScreen.vue";
 import BackupProgressPopup from "@/components/BackupProgressPopup.vue";
@@ -175,6 +182,8 @@ const {
   savePostExecScript,
   clearPostExecScript,
   updateChroot,
+  showUpdateConfirm,
+  confirmUpdate,
 } = useChroot(consoleApi);
 
 const {
