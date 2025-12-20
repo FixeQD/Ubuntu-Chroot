@@ -124,7 +124,7 @@ export function useNativeCmd() {
       timeoutMs?: number;
     },
   ): Promise<CommandResult> {
-    const timeoutMs = options?.timeoutMs ?? 10000; // Default 10s timeout
+    const timeoutMs = options?.timeoutMs;
 
     return new Promise((resolve) => {
       const callbacks: AsyncCallbacks = {
@@ -149,20 +149,23 @@ export function useNativeCmd() {
         return;
       }
 
-      // Set timeout to prevent hanging
-      const timeoutId = setTimeout(() => {
-        resolve({ success: false, error: "Command execution timed out" });
-      }, timeoutMs);
+      // Set timeout to prevent hanging, if specified
+      let timeoutId: NodeJS.Timeout | undefined;
+      if (timeoutMs && timeoutMs > 0) {
+        timeoutId = setTimeout(() => {
+          resolve({ success: false, error: "Command execution timed out" });
+        }, timeoutMs);
+      }
 
       // Clear timeout when command completes
       const originalOnComplete = callbacks.onComplete;
       const originalOnError = callbacks.onError;
       callbacks.onComplete = (result) => {
-        clearTimeout(timeoutId);
+        if (timeoutId) clearTimeout(timeoutId);
         originalOnComplete?.(result);
       };
       callbacks.onError = (err) => {
-        clearTimeout(timeoutId);
+        if (timeoutId) clearTimeout(timeoutId);
         originalOnError?.(err);
       };
     });

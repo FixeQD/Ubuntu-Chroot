@@ -148,7 +148,9 @@ export function useChroot(consoleApi: ReturnType<typeof useConsole>) {
       return false;
     }
     try {
-      const result = await cmd.runCommandAsyncPromise('echo "test"');
+      const result = await cmd.runCommandAsyncPromise('echo "test"', {
+        timeoutMs: 10000,
+      });
       if (result.success) {
         if (!silent) appendConsole("Root access available", "info");
         return true;
@@ -376,6 +378,7 @@ export function useChroot(consoleApi: ReturnType<typeof useConsole>) {
     try {
       const result = await cmd.runCommandAsyncPromise(
         `cat ${BOOT_FILE} 2>/dev/null || echo 0`,
+        { timeoutMs: 10000 },
       );
       runAtBoot.value = String(result.output || "").trim() === "1";
       if (!silent)
@@ -392,6 +395,7 @@ export function useChroot(consoleApi: ReturnType<typeof useConsole>) {
     try {
       const result = await cmd.runCommandAsyncPromise(
         `mkdir -p ${CHROOT_DIR} && echo ${runAtBoot.value ? 1 : 0} > ${BOOT_FILE}`,
+        { timeoutMs: 10000 },
       );
       if (result.success) {
         appendConsole(
@@ -419,6 +423,7 @@ export function useChroot(consoleApi: ReturnType<typeof useConsole>) {
     try {
       const result = await cmd.runCommandAsyncPromise(
         `cat ${DOZE_OFF_FILE} 2>/dev/null || echo 1`,
+        { timeoutMs: 10000 },
       );
       androidOptimize.value = String(result.output || "").trim() === "1";
       if (!silent)
@@ -442,6 +447,7 @@ export function useChroot(consoleApi: ReturnType<typeof useConsole>) {
     try {
       const result = await cmd.runCommandAsyncPromise(
         `mkdir -p ${CHROOT_DIR} && echo ${androidOptimize.value ? 1 : 0} > ${DOZE_OFF_FILE}`,
+        { timeoutMs: 10000 },
       );
       if (result.success) {
         appendConsole(
@@ -468,6 +474,7 @@ export function useChroot(consoleApi: ReturnType<typeof useConsole>) {
     try {
       const result = await cmd.runCommandAsyncPromise(
         `cat ${CHROOT_DIR}/post_exec.sh 2>/dev/null || echo ''`,
+        { timeoutMs: 10000 },
       );
       postExecScript.value = String(result.output || "").trim();
     } catch (e) {
@@ -488,6 +495,7 @@ export function useChroot(consoleApi: ReturnType<typeof useConsole>) {
       const base64 = btoa(binary);
       const result1 = await cmd.runCommandAsyncPromise(
         `echo '${base64}' | base64 -d > ${CHROOT_DIR}/post_exec.sh`,
+        { timeoutMs: 10000 },
       );
       if (!result1.success) {
         appendConsole(
@@ -498,6 +506,7 @@ export function useChroot(consoleApi: ReturnType<typeof useConsole>) {
       }
       const result2 = await cmd.runCommandAsyncPromise(
         `chmod 755 ${CHROOT_DIR}/post_exec.sh`,
+        { timeoutMs: 10000 },
       );
       if (result2.success) {
         appendConsole("Post-exec script saved successfully", "success");
@@ -517,6 +526,7 @@ export function useChroot(consoleApi: ReturnType<typeof useConsole>) {
     try {
       const result = await cmd.runCommandAsyncPromise(
         `echo '' > ${CHROOT_DIR}/post_exec.sh`,
+        { timeoutMs: 10000 },
       );
       if (result.success) {
         appendConsole("Post-exec script cleared successfully", "info");
