@@ -76,7 +76,8 @@ export type BackupRestoreDeps = {
   activeCommandId?: { value: string | null };
   rootAccessConfirmed?: { value: boolean };
   showProgress?: { value: boolean };
-  progressType?: { value: "backup" | "restore" | null };
+  progressTitle?: { value: string };
+  progressMessage?: { value: string };
 };
 
 let deps: BackupRestoreDeps | null = null;
@@ -172,7 +173,10 @@ export async function backupChroot() {
     d.appendConsole(`Backup path selected: ${backupPath}`, "info");
 
     if (d.showProgress) d.showProgress.value = true;
-    if (d.progressType) d.progressType.value = "backup";
+    if (d.progressTitle) d.progressTitle.value = "Backup in Progress";
+    if (d.progressMessage)
+      d.progressMessage.value =
+        "Please wait while the backup is being created...";
 
     d.closeSettingsPopup?.();
     await new Promise((r) =>
@@ -288,7 +292,8 @@ export async function backupChroot() {
     d.disableSettingsPopup?.(false, true);
   } finally {
     if (d.showProgress) d.showProgress.value = false;
-    if (d.progressType) d.progressType.value = null;
+    if (d.progressTitle) d.progressTitle.value = "";
+    if (d.progressMessage) d.progressMessage.value = "";
   }
 }
 
@@ -335,7 +340,10 @@ export async function restoreChroot() {
     if (!backupPath) return;
 
     if (d.showProgress) d.showProgress.value = true;
-    if (d.progressType) d.progressType.value = "restore";
+    if (d.progressTitle) d.progressTitle.value = "Restore in Progress";
+    if (d.progressMessage)
+      d.progressMessage.value =
+        "Please wait while the restore is being performed...";
 
     d.closeSettingsPopup?.();
     await new Promise((r) =>
@@ -448,7 +456,8 @@ export async function restoreChroot() {
     d.disableSettingsPopup?.(false, true);
   } finally {
     if (d.showProgress) d.showProgress.value = false;
-    if (d.progressType) d.progressType.value = null;
+    if (d.progressTitle) d.progressTitle.value = "";
+    if (d.progressMessage) d.progressMessage.value = "";
   }
 }
 

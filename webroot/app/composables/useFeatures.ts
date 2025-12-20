@@ -28,7 +28,8 @@ export function useFeatures(
   refreshStatus: () => Promise<void>,
   consoleApi: ReturnType<typeof useConsole>,
   showProgress: { value: boolean },
-  progressType: { value: "backup" | "restore" | null },
+  progressTitle: { value: string },
+  progressMessage: { value: string },
 ) {
   const cmd = useNativeCmd();
 
@@ -272,7 +273,8 @@ export function useFeatures(
         updateStatus: updateStatus,
         refreshStatus: refreshStatus,
         showProgress: showProgress,
-        progressType: progressType,
+        progressTitle: progressTitle,
+        progressMessage: progressMessage,
       };
 
       try {

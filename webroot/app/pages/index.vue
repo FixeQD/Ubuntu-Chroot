@@ -1,7 +1,11 @@
 <template>
   <LoadingScreen v-if="showLoading" />
   <NotFound v-if="showNotFound" @retry="handleRetry" />
-  <BackupProgressPopup :visible="showProgress" :type="progressType" />
+  <ProgressPopup
+    :visible="showProgress"
+    :title="progressTitle"
+    :message="progressMessage"
+  />
   <div v-if="!showLoading && !showNotFound" class="app">
     <Header
       :onBeforeOpenSettings="() => loadPostExecScript()"
@@ -132,7 +136,7 @@ import UpdateConfirmPopup from "@/components/UpdateConfirmPopup.vue";
 import UninstallConfirmPopup from "@/components/UninstallConfirmPopup.vue";
 import Footer from "@/components/Footer.vue";
 import LoadingScreen from "@/components/LoadingScreen.vue";
-import BackupProgressPopup from "@/components/BackupProgressPopup.vue";
+import ProgressPopup from "@/components/ProgressPopup.vue";
 import NotFound from "@/components/NotFound.vue";
 import HotspotFeature from "@/features/hotspot";
 import ForwardNatFeature from "@/features/forward-nat";
@@ -170,7 +174,8 @@ const {
   activeCommandId,
   rootAccessConfirmedRef,
   showProgress,
-  progressType,
+  progressTitle,
+  progressMessage,
   statusDotClass,
   appendConsole,
   withCommandGuard,
@@ -243,7 +248,8 @@ const { copyConsole, clearConsole, initFeatureModules } = useFeatures(
   refreshStatus,
   consoleApi,
   showProgress,
-  progressType,
+  progressTitle,
+  progressMessage,
 );
 
 watch(

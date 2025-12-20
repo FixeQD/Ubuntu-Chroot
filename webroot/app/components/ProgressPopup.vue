@@ -4,20 +4,8 @@
       <div v-if="visible" class="backup-progress-overlay">
         <transition name="scale" appear>
           <div class="backup-progress-dialog">
-            <h3>
-              {{
-                type === "restore"
-                  ? "Restore in Progress"
-                  : "Backup in Progress"
-              }}
-            </h3>
-            <p>
-              {{
-                type === "restore"
-                  ? "Please wait while the restore is being performed..."
-                  : "Please wait while the backup is being created..."
-              }}
-            </p>
+            <h3>{{ title }}</h3>
+            <p>{{ message }}</p>
             <div class="spinner"></div>
           </div>
         </transition>
@@ -29,12 +17,11 @@
 <script setup lang="ts">
 interface Props {
   visible: boolean;
-  type?: "backup" | "restore";
+  title: string;
+  message: string;
 }
 
-const props = withDefaults(defineProps<Props>(), {
-  type: "backup",
-});
+const props = defineProps<Props>();
 </script>
 
 <style scoped>
