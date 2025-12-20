@@ -53,7 +53,7 @@
       @updateChroot="() => updateChroot(closeSettingsPopup)"
       @backupChroot="backupChroot"
       @restoreChroot="restoreChroot"
-      @uninstallChroot="uninstallChroot"
+      @uninstallChroot="handleUninstallConfirm"
     />
 
     <SparseSettingsPopup
@@ -104,6 +104,12 @@
       @cancel="showUpdateConfirm = false"
     />
 
+    <UninstallConfirmPopup
+      :visible="showUninstallConfirm"
+      @confirm="confirmUninstall"
+      @cancel="showUninstallConfirm = false"
+    />
+
     <Footer />
   </div>
 </template>
@@ -123,6 +129,7 @@ import SparseSettingsPopup from "@/components/SparseSettingsPopup.vue";
 import HotspotPopup from "@/components/HotspotPopup.vue";
 import ForwardNatPopup from "@/components/ForwardNatPopup.vue";
 import UpdateConfirmPopup from "@/components/UpdateConfirmPopup.vue";
+import UninstallConfirmPopup from "@/components/UninstallConfirmPopup.vue";
 import Footer from "@/components/Footer.vue";
 import LoadingScreen from "@/components/LoadingScreen.vue";
 import BackupProgressPopup from "@/components/BackupProgressPopup.vue";
@@ -144,6 +151,7 @@ const cmd = useNativeCmd();
 const consoleApi = useConsole();
 const showLoading = ref(true);
 const showNotFound = ref(false);
+const showUninstallConfirm = ref(false);
 const globalDisabled = computed(() => !!activeCommandId.value);
 
 const {
@@ -362,6 +370,15 @@ const handleRetry = () => {
   showNotFound.value = false;
   showLoading.value = true;
   performCheck();
+};
+
+const handleUninstallConfirm = () => {
+  showUninstallConfirm.value = true;
+};
+
+const confirmUninstall = () => {
+  showUninstallConfirm.value = false;
+  uninstallChroot();
 };
 
 onMounted(async () => {
