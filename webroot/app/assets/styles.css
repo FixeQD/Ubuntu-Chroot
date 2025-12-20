@@ -1711,7 +1711,7 @@ textarea {
 .loading-screen {
   position: fixed;
   inset: 0;
-  background: #e95420;
+  background: #0f0f0f;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1724,10 +1724,6 @@ textarea {
   opacity: 0;
   pointer-events: none;
   display: none;
-}
-
-[data-theme="dark"] .loading-screen {
-  background: #0f0f0f;
 }
 
 .loading-dots {
