@@ -1,7 +1,9 @@
 import { DEFAULT_BACKUP_DIR } from "../composables/constants";
 import { createApp, nextTick } from "vue";
-import FilePickerPopup from "../components/FilePickerPopup.vue"; // Ignore, it works (Why the fu"k it shows that there's an error)
 import type { CommandResult } from "@/composables/useNativeCmd";
+
+// @ts-ignore
+import FilePickerPopup from "../components/FilePickerPopup.vue";
 
 export type BackupRestoreDeps = {
   appendConsole: (text: string, cls?: string) => void;
