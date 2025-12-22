@@ -77,7 +77,7 @@
             </button>
             <button
               id="restore-btn"
-              class="btn danger"
+              class="btn warning"
               :disabled="disabled"
               @click="$emit('restoreChroot')"
             >
