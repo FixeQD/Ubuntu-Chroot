@@ -39,6 +39,11 @@ const retry = () => {
   animation: fadeIn 0.5s ease-out;
 }
 
+[data-theme=""] .not-found-page {
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  color: #212529;
+}
+
 .error-container {
   background: rgba(42, 42, 42, 0.95);
   backdrop-filter: blur(10px);
@@ -50,6 +55,13 @@ const retry = () => {
   color: #ffffff;
   border: 1px solid rgba(255, 255, 255, 0.1);
   animation: slideUp 0.6s ease-out;
+}
+
+[data-theme=""] .error-container {
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  color: #212529;
+  border: 1px solid rgba(0, 0, 0, 0.1);
 }
 
 .icon-container {
@@ -70,10 +82,18 @@ h1 {
   font-weight: 600;
 }
 
+[data-theme=""] h1 {
+  color: #dc3545;
+}
+
 p {
   color: #cccccc;
   line-height: 1.6;
   margin-bottom: 1rem;
+}
+
+[data-theme=""] p {
+  color: #6c757d;
 }
 
 .actions {
@@ -93,9 +113,19 @@ p {
   box-shadow: 0 4px 12px rgba(255, 107, 107, 0.3);
 }
 
+[data-theme=""] .retry-btn {
+  background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);
+}
+
 .retry-btn:hover {
   transform: translateY(-2px);
   box-shadow: 0 6px 20px rgba(255, 107, 107, 0.4);
+}
+
+[data-theme=""] .retry-btn:hover {
+  box-shadow: 0 6px 20px rgba(220, 53, 69, 0.4);
 }
 
 .retry-btn:active {

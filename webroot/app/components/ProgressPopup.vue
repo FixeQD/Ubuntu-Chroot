@@ -73,6 +73,10 @@ const props = defineProps<Props>();
   margin: 0 auto;
 }
 
+:deep([data-theme="dark"]) .spinner {
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
 @keyframes spin {
   to {
     transform: rotate(360deg);

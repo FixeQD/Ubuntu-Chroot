@@ -601,6 +601,11 @@ textarea {
   box-shadow: none !important;
   transition: box-shadow 0.15s ease;
 }
+
+.theme-btn[disabled] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 .theme-btn .icon {
   opacity: 1;
   transition:
@@ -639,6 +644,10 @@ textarea {
 /* Dark mode theme button borders */
 [data-theme="dark"] .theme-btn {
   border-color: rgba(255, 255, 255, 0.08);
+}
+
+[data-theme="dark"] .theme-btn[disabled] {
+  opacity: 0.5;
 }
 
 /* Ensure outline buttons remain visible in dark mode (lighten the border) */

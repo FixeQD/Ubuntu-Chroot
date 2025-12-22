@@ -51,7 +51,7 @@ const closeOnOverlay = (event: Event) => {
 <style scoped>
 .popup-overlay {
   align-items: center;
-  background: #0006;
+  background: rgba(0, 0, 0, 0.4);
   display: flex;
   height: 100%;
   justify-content: center;
@@ -60,6 +60,10 @@ const closeOnOverlay = (event: Event) => {
   top: 0;
   width: 100%;
   z-index: 1000;
+}
+
+[data-theme="dark"] .popup-overlay {
+  background: rgba(0, 0, 0, 0.6);
 }
 
 .popup-content {
@@ -81,6 +85,10 @@ const closeOnOverlay = (event: Event) => {
   display: flex;
   justify-content: space-between;
   padding: 20px 24px 16px;
+}
+
+[data-theme="dark"] .popup-header {
+  border-bottom-color: rgba(255, 255, 255, 0.08);
 }
 
 .popup-header h3 {
@@ -105,9 +113,17 @@ const closeOnOverlay = (event: Event) => {
   width: 36px;
 }
 
+[data-theme="dark"] .close-btn {
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
 .close-btn:hover {
-  background: #0000000d;
+  background: rgba(0, 0, 0, 0.05);
   transform: rotate(90deg);
+}
+
+[data-theme="dark"] .close-btn:hover {
+  background: rgba(255, 255, 255, 0.05);
 }
 
 .popup-body {
@@ -126,6 +142,11 @@ const closeOnOverlay = (event: Event) => {
   position: relative;
 }
 
+[data-theme="dark"] .warning-banner {
+  background: #451a03;
+  border-color: #ea580c;
+}
+
 .warning-content {
   align-items: flex-start;
   display: flex;
@@ -139,11 +160,19 @@ const closeOnOverlay = (event: Event) => {
   margin-top: 1px;
 }
 
+[data-theme="dark"] .warning-content svg {
+  color: #ea580c;
+}
+
 .warning-text {
   color: #92400e;
   font-size: 14px;
   line-height: 1.5;
   margin: 0;
+}
+
+[data-theme="dark"] .warning-text {
+  color: #fed7aa;
 }
 
 .script-actions {
@@ -171,6 +200,10 @@ const closeOnOverlay = (event: Event) => {
   background: transparent;
   border: 1px solid rgba(15, 23, 32, 0.08);
   color: var(--text);
+}
+
+[data-theme="dark"] .btn.outline {
+  border-color: rgba(255, 255, 255, 0.08);
 }
 
 .btn.danger {
