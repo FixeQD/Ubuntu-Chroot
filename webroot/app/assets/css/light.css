@@ -43,6 +43,33 @@ body {
   box-sizing: border-box;
 }
 
+/* Global button styles to prevent active state sticking on mobile */
+button {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+button:active {
+  transform: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+/* Prevent hover state from sticking on touch devices */
+@media (hover: none) {
+  button:hover,
+  [class*="btn"]:hover,
+  .password-toggle:hover,
+  .user-select:hover {
+    transform: none !important;
+    box-shadow: none !important;
+    background: inherit !important;
+    border-color: inherit !important;
+  }
+}
+
 /* Disable text selection globally */
 * {
   -webkit-user-select: none;
@@ -892,10 +919,10 @@ textarea {
   border-radius: var(--surface-radius);
   box-shadow: 0 6px 20px rgba(6, 8, 14, 0.06);
   width: 95%;
-  max-width: 600px;
+  max-width: 500px;
   max-height: 85vh;
   overflow-y: auto;
-  transform: scale(0.95) translateY(-10px);
+  transform: scale(1);
   transition: transform 0.3s ease;
   border: 1px solid rgba(0, 0, 0, 0.08);
 }
@@ -1024,7 +1051,8 @@ textarea {
 .script-actions {
   display: flex;
   gap: 8px;
-  margin-top: 16px;
+  justify-content: flex-end;
+  margin-top: 24px;
 }
 
 .script-actions .btn {

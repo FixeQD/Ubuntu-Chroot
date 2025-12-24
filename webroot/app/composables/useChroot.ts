@@ -74,10 +74,24 @@ export function useChroot(consoleApi: ReturnType<typeof useConsole>) {
       appendConsole("Cannot execute: root access not available", "err");
       return;
     }
+    let timeoutId: number | null = null;
     try {
       activeCommandId.value = commandId;
+      timeoutId = window.setTimeout(
+        () => {
+          if (activeCommandId.value === commandId) {
+            appendConsole(
+              `⚠ Command '${commandId}' timed out and was forcibly cleared`,
+              "warn",
+            );
+            activeCommandId.value = null;
+          }
+        },
+        10 * 60 * 1000,
+      ); // 10 minutes
       await fn();
     } finally {
+      if (timeoutId) clearTimeout(timeoutId);
       activeCommandId.value = null;
     }
   }

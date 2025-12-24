@@ -12,7 +12,7 @@
         id="forward-nat-btn"
         class="theme-btn"
         title="Forward the Chroot Traffic to any interface"
-        :disabled="disableNatAndHotspot"
+        :disabled="disableNatAndHotspot || status === 'stopped'"
         @click="$emit('openForwardNatPopup')"
       >
         <Icon name="forward-nat" />
@@ -21,7 +21,7 @@
         id="hotspot-btn"
         class="theme-btn"
         title="Hotspot"
-        :disabled="disableNatAndHotspot"
+        :disabled="disableNatAndHotspot || status === 'stopped'"
         @click="$emit('openHotspotPopup')"
       >
         <Icon name="hotspot" />
@@ -58,11 +58,13 @@ import Icon from "@/components/Icon.vue";
 interface Props {
   onBeforeOpenSettings?: () => void;
   disableNatAndHotspot?: boolean;
+  status?: string;
 }
 
 const props = withDefaults(defineProps<Props>(), {
   onBeforeOpenSettings: undefined,
   disableNatAndHotspot: false,
+  status: "unknown",
 });
 
 /**

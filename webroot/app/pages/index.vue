@@ -27,7 +27,7 @@
     @clearPostExecScript="clearPostExecScript"
     @updateChroot="() => updateChroot(closeSettingsPopup)"
     @backupChroot="backupChroot"
-    @restoreChroot="restoreChroot"
+    @restoreChroot="handleRestoreConfirm"
     @uninstallChroot="handleUninstallConfirm"
   />
 
@@ -79,6 +79,12 @@
     @cancel="showUpdateConfirm = false"
   />
 
+  <RestoreConfirmPopup
+    :visible="showRestoreConfirm"
+    @confirm="confirmRestore"
+    @cancel="showRestoreConfirm = false"
+  />
+
   <UninstallConfirmPopup
     :visible="showUninstallConfirm"
     @confirm="confirmUninstall"
@@ -87,6 +93,7 @@
 
   <div v-if="!showLoading && !showNotFound" class="app">
     <Header
+      :status="statusText"
       :onBeforeOpenSettings="() => loadPostExecScript()"
       @openForwardNatPopup="openForwardNatPopup"
       @openHotspotPopup="openHotspotPopup"
@@ -141,6 +148,7 @@ import SparseSettingsPopup from "@/components/SparseSettingsPopup.vue";
 import HotspotPopup from "@/components/HotspotPopup.vue";
 import ForwardNatPopup from "@/components/ForwardNatPopup.vue";
 import UpdateConfirmPopup from "@/components/UpdateConfirmPopup.vue";
+import RestoreConfirmPopup from "@/components/RestoreConfirmPopup.vue";
 import UninstallConfirmPopup from "@/components/UninstallConfirmPopup.vue";
 import Footer from "@/components/Footer.vue";
 import LoadingScreen from "@/components/LoadingScreen.vue";
@@ -163,8 +171,9 @@ const cmd = useNativeCmd();
 const consoleApi = useConsole();
 const showLoading = ref(true);
 const showNotFound = ref(false);
+const showRestoreConfirm = ref(false);
 const showUninstallConfirm = ref(false);
-const globalDisabled = computed(() => !!activeCommandId.value);
+const globalDisabled = false; // Disabled cuz it disables all buttons on command error
 
 const {
   statusText,
@@ -385,6 +394,19 @@ const handleRetry = () => {
   showNotFound.value = false;
   showLoading.value = true;
   performCheck();
+};
+
+const handleRestoreConfirm = () => {
+  if (!showNotFound.value) {
+    showRestoreConfirm.value = true;
+  } else {
+    restoreChroot();
+  }
+};
+
+const confirmRestore = () => {
+  showRestoreConfirm.value = false;
+  restoreChroot();
 };
 
 const handleUninstallConfirm = () => {
